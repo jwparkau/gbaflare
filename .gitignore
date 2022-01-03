@@ -38,4 +38,6 @@
 boot/
 build/
 roms/
+test/
+resources/
 compile_commands.json

@@ -11,6 +11,10 @@ find_package(SDL2 REQUIRED)
 
 target_sources(gbaflare PUBLIC
 	main.cpp
+	cpu.cpp
+	memory.cpp
+	types.cpp
+	arm.cpp
 )
 
 target_include_directories(gbaflare PUBLIC
