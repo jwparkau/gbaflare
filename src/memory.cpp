@@ -1,5 +1,8 @@
 #include "memory.h"
 
+#include <stdexcept>
+#include <fstream>
+
 u8 bios_data[BIOS_SIZE];
 u8 ewram_data[EWRAM_SIZE];
 u8 iwram_data[IWRAM_SIZE];
@@ -7,6 +10,22 @@ u8 io_data[IO_SIZE];
 u8 palette_data[PALETTE_RAM_SIZE];
 u8 vram_data[VRAM_SIZE];
 u8 oam_data[OAM_SIZE];
+u8 cartridge_data[CARTRIDGE_SIZE];
+
+
+void load_cartridge_rom(char *filename)
+{
+	std::ifstream f(filename, std::ios_base::binary);
+
+	f.read((char *)cartridge_data, CARTRIDGE_SIZE);
+	std::streamsize bytes_read = f.gcount();
+
+	if (bytes_read == 0) {
+		throw std::runtime_error("ERROR while reading cartridge file");
+	}
+
+	fprintf(stderr, "cartridge rom: read %ld bytes\n", bytes_read);
+}
 
 /*
  * Use a software cache later to make things faster
@@ -35,6 +54,9 @@ MemoryRegion get_memory_region(addr_t addr, addr_t &base_addr)
 	} else if (OAM_START <= addr && addr < OAM_END) {
 		base_addr = OAM_START;
 		region = MemoryRegion::OAM;
+	} else if (CARTRIDGE_START <= addr && addr < CARTRIDGE_END) {
+		base_addr = CARTRIDGE_START;
+		region = MemoryRegion::CARTRIDGE;
 	} else {
 		region = MemoryRegion::UNUSED;
 	}
@@ -71,6 +93,9 @@ static u32 read(addr_t addr)
 			break;
 		case MemoryRegion::OAM:
 			arr = oam_data;
+			break;
+		case MemoryRegion::CARTRIDGE:
+			arr = cartridge_data;
 			break;
 		default:
 			return 0xFFFF'FFFF;
@@ -115,6 +140,9 @@ static void write(addr_t addr, T data)
 			break;
 		case MemoryRegion::OAM:
 			arr = oam_data;
+			break;
+		case MemoryRegion::CARTRIDGE:
+			arr = cartridge_data;
 			break;
 		default:
 			return;

@@ -34,6 +34,8 @@
 .*
 !.gitignore
 
+*.gencpp
+
 # Project specific
 boot/
 build/

@@ -3,14 +3,15 @@
 
 #include "types.h"
 
+// do not reorder
 enum cpu_mode_t {
-	USER,
+	SYSTEM,
 	FIQ,
 	SUPERVISOR,
 	ABORT,
 	IRQ,
 	UNDEFINED,
-	SYSTEM
+	USER
 };
 
 enum cpsr_flags {
@@ -44,19 +45,26 @@ struct Cpu {
 	u32 CPSR{};
 	u32 SPSR[6]{};
 	u32 &pc = registers[0][15];
+	u32 *lr = &registers[0][14];
 
 	u32 cycles{};
 	u32 pipeline[2]{};
 	bool in_thumb_state{};
-	cpu_mode_t cpu_mode = USER;
+	cpu_mode_t cpu_mode = SYSTEM;
 
 
 
 	// functions
 	void reset();
 	void fakeboot();
+	void flush_pipeline();
 	void switch_mode(cpu_mode_t cpu_mode);
 	void step();
+
+	void fetch();
+	void arm_fetch();
+	void execute();
+	void arm_execute();
 
 	u32 cpu_read32(addr_t addr);
 	u16 cpu_read16(addr_t addr);
@@ -67,6 +75,9 @@ struct Cpu {
 	void cpu_write8(addr_t addr, u8 data);
 
 	u32 *get_reg(int i);
+	u32 *get_spsr();
+
+	void set_flag(u32 flag, bool x);
 };
 
 extern Cpu cpu;

@@ -10,6 +10,7 @@ constexpr std::size_t IO_SIZE = 1_KiB;
 constexpr std::size_t PALETTE_RAM_SIZE = 1_KiB;
 constexpr std::size_t VRAM_SIZE = 96_KiB;
 constexpr std::size_t OAM_SIZE = 1_KiB;
+constexpr std::size_t CARTRIDGE_SIZE = 32_MiB;
 
 constexpr addr_t BIOS_START = 0x0;
 constexpr addr_t EWRAM_START = 0x0200'0000;
@@ -18,6 +19,7 @@ constexpr addr_t IO_START = 0x0400'0000;
 constexpr addr_t PALETTE_RAM_START = 0x0500'0000;
 constexpr addr_t VRAM_START = 0x0600'8000;
 constexpr addr_t OAM_START = 0x0700'0000;
+constexpr addr_t CARTRIDGE_START = 0x0800'0000;
 
 constexpr addr_t BIOS_END = BIOS_START + BIOS_SIZE;
 constexpr addr_t EWRAM_END = EWRAM_START + EWRAM_SIZE;
@@ -26,6 +28,7 @@ constexpr addr_t IO_END = IO_START + IO_SIZE;
 constexpr addr_t PALETTE_RAM_END = PALETTE_RAM_START + PALETTE_RAM_SIZE;
 constexpr addr_t VRAM_END = VRAM_START + VRAM_SIZE;
 constexpr addr_t OAM_END = OAM_START + OAM_SIZE;
+constexpr addr_t CARTRIDGE_END = CARTRIDGE_START + CARTRIDGE_SIZE;
 
 enum class MemoryRegion {
 	BIOS,
@@ -35,6 +38,7 @@ enum class MemoryRegion {
 	PALETTE_RAM,
 	VRAM,
 	OAM,
+	CARTRIDGE,
 	UNUSED
 };
 
@@ -45,9 +49,11 @@ extern u8 io_data[IO_SIZE];
 extern u8 palette_data[PALETTE_RAM_SIZE];
 extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
+extern u8 cartridge_data[CARTRIDGE_SIZE];
 
 MemoryRegion get_memory_region(addr_t addr, addr_t &base_addr);
 
+void load_cartridge_rom(char *filename);
 
 namespace Memory {
 	u32 read32(addr_t addr);
