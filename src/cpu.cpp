@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include "arm.h"
+#include "thumb.h"
 #include "memory.h"
 
 #include <stdexcept>
@@ -13,12 +14,15 @@ void Cpu::reset()
 
 void Cpu::fakeboot()
 {
+	registers[0][0] = 0x0800'0000;
+	registers[0][1] = 0xEA;
 	pc = CARTRIDGE_START;
+	CPSR = 0x6000'001F;
+	registers[0][13] = 0x03007F00;
 }
 
 void Cpu::flush_pipeline()
 {
-	fetch();
 	fetch();
 }
 
@@ -37,7 +41,11 @@ void Cpu::step()
 
 void Cpu::fetch()
 {
-	arm_fetch();
+	if (in_thumb_state()) {
+		thumb_fetch();
+	} else {
+		arm_fetch();
+	}
 }
 
 void Cpu::arm_fetch()
@@ -50,15 +58,45 @@ void Cpu::arm_fetch()
 	pc += 4;
 }
 
+void Cpu::thumb_fetch()
+{
+	u16 op = cpu_read16(pc);
+
+	pipeline[0] = pipeline[1];
+	pipeline[1] = op;
+
+	pc += 2;
+}
+
 void Cpu::execute()
 {
-	arm_execute();
+	if (in_thumb_state()) {
+		thumb_execute();
+	} else {
+		arm_execute();
+	}
+}
+
+void Cpu::thumb_execute()
+{
+	const u16 op = pipeline[0];
+	dump_registers();
+	fprintf(stderr, "     %04X\n", op);
+
+	const u32 lut_offset = op >> 6;
+	ThumbInstruction *fp = thumb_lut[lut_offset];
+	if (fp) {
+		fp(op);
+	} else {
+		throw std::runtime_error("unhandled opcode");
+	}
 }
 
 void Cpu::arm_execute()
 {
 	const u32 op = pipeline[0];
-	fprintf(stderr, "OP: %08X, PC: %08X\n", op, pc);
+	dump_registers();
+	fprintf(stderr, " %08X\n", op);
 
 	const u32 op1 = op >> 20 & BITMASK(8);
 	const u32 op2 = op >> 4 & BITMASK(4);
@@ -140,18 +178,73 @@ void Cpu::arm_execute()
 	}
 }
 
-void Cpu::switch_mode(cpu_mode_t cpu_mode)
+void Cpu::switch_mode(cpu_mode_t new_mode)
 {
-	/*
-	 * copy registers
-	 * copy pc
-	 * copy lr
-	 */
+	int src = cpu_mode % 6;
+	int dst = new_mode % 6;
+
+	cpu_mode = new_mode;
+
+	if (src == dst) {
+		return;
+	}
+
+	for (int i = 0; i < 8; i++) {
+		registers[0][i] = registers[src][i];
+		registers[dst][i] = registers[0][i];
+	}
+
+	if (src != FIQ) {
+		for (int i = 8; i < 13; i++) {
+			registers[0][i] = registers[src][i];
+		}
+	}
+	if (dst != FIQ) {
+		for (int i = 8; i < 13; i++) {
+			registers[dst][i] = registers[0][i];
+		}
+	}
+}
+
+void Cpu::update_mode()
+{
+	cpu_mode_t new_mode;
+
+	switch (CPSR & BITMASK(5)) {
+		case 0x10:
+			new_mode = USER;
+			break;
+		case 0x11:
+			new_mode = FIQ;
+			break;
+		case 0x12:
+			new_mode = IRQ;
+			break;
+		case 0x13:
+			new_mode = SUPERVISOR;
+			break;
+		case 0x17:
+			new_mode = ABORT;
+			break;
+		case 0x1B:
+			new_mode = UNDEFINED;
+			break;
+		case 0x1F:
+			new_mode = SYSTEM;
+			break;
+		default:
+			throw std::runtime_error("unhandled mode bits?");
+	}
+
+	switch_mode(new_mode);
 }
 
 u32 *Cpu::get_reg(int i)
 {
-	return &registers[cpu_mode % 6][i];
+	if (i == 15) {
+		return &pc;
+	}
+	return &registers[cpu_mode % 6][i % 16];
 }
 
 u32 *Cpu::get_spsr()
@@ -196,4 +289,30 @@ void Cpu::cpu_write16(addr_t addr, u16 data)
 void Cpu::cpu_write8(addr_t addr, u8 data)
 {
 	Memory::write8(addr, data);
+}
+
+bool Cpu::in_thumb_state()
+{
+	return CPSR & T_STATE;
+}
+
+bool Cpu::in_privileged_mode()
+{
+	return cpu_mode != USER;
+}
+
+bool Cpu::has_spsr()
+{
+	return !(cpu_mode == USER || cpu_mode == SYSTEM);
+}
+
+void Cpu::dump_registers()
+{
+	for (int i = 0; i < 15; i++) {
+		fprintf(stderr, "%08X ", registers[0][i]);
+	}
+
+	fprintf(stderr, "%08X ", pc - 4);
+
+	fprintf(stderr, "cpsr: %08X |", CPSR);
 }

@@ -16,6 +16,7 @@ target_sources(gbaflare PUBLIC
 	types.cpp
 	arm.cpp
 	ops.cpp
+	thumb.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

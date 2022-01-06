@@ -13,7 +13,7 @@ u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
 
 
-void load_cartridge_rom(char *filename)
+void load_cartridge_rom(const char *filename)
 {
 	std::ifstream f(filename, std::ios_base::binary);
 
@@ -25,6 +25,20 @@ void load_cartridge_rom(char *filename)
 	}
 
 	fprintf(stderr, "cartridge rom: read %ld bytes\n", bytes_read);
+}
+
+void load_bios_rom(const char *filename)
+{
+	std::ifstream f(filename, std::ios_base::binary);
+
+	f.read((char *)bios_data, BIOS_SIZE);
+	std::streamsize bytes_read = f.gcount();
+
+	if (bytes_read == 0) {
+		throw std::runtime_error("ERROR while reading bios file");
+	}
+
+	fprintf(stderr, "bios rom: read %ld bytes\n", bytes_read);
 }
 
 /*

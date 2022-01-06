@@ -18,8 +18,9 @@ u32 ror(u32 x, u32 n, bool &carry)
 
 u32 rrx(u32 x, bool &carry)
 {
+	u32 r = (carry << 31) | (x >> 1);
 	carry = x & BIT(0);
-	return (carry << 31) | (x >> 1);
+	return r;
 }
 
 u32 asr(u32 x, u32 n, bool &carry)
@@ -75,4 +76,9 @@ u32 lsl(u32 x, u32 n, bool &carry)
 
 	carry = x & BIT(32 - n);
 	return x << n;
+}
+
+u32 align(u32 addr, u32 x)
+{
+	return addr / x * x;
 }

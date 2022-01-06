@@ -53,7 +53,8 @@ extern u8 cartridge_data[CARTRIDGE_SIZE];
 
 MemoryRegion get_memory_region(addr_t addr, addr_t &base_addr);
 
-void load_cartridge_rom(char *filename);
+void load_bios_rom(const char *filename);
+void load_cartridge_rom(const char *filename);
 
 namespace Memory {
 	u32 read32(addr_t addr);

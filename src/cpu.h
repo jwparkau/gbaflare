@@ -44,27 +44,27 @@ struct Cpu {
 	u32 registers[6][16]{};
 	u32 CPSR{};
 	u32 SPSR[6]{};
-	u32 &pc = registers[0][15];
+	u32 pc{};
 	u32 *lr = &registers[0][14];
 
 	u32 cycles{};
 	u32 pipeline[2]{};
-	bool in_thumb_state{};
 	cpu_mode_t cpu_mode = SYSTEM;
-
-
 
 	// functions
 	void reset();
 	void fakeboot();
 	void flush_pipeline();
-	void switch_mode(cpu_mode_t cpu_mode);
+	void switch_mode(cpu_mode_t new_mode);
+	void update_mode();
 	void step();
 
 	void fetch();
 	void arm_fetch();
+	void thumb_fetch();
 	void execute();
 	void arm_execute();
+	void thumb_execute();
 
 	u32 cpu_read32(addr_t addr);
 	u16 cpu_read16(addr_t addr);
@@ -78,6 +78,12 @@ struct Cpu {
 	u32 *get_spsr();
 
 	void set_flag(u32 flag, bool x);
+
+	bool in_thumb_state();
+	bool in_privileged_mode();
+	bool has_spsr();
+
+	void dump_registers();
 };
 
 extern Cpu cpu;

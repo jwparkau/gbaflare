@@ -12,10 +12,12 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	load_bios_rom("../boot/gba_bios.bin");
 	load_cartridge_rom(argv[1]);
 
 	cpu.fakeboot();
-	cpu.flush_pipeline();
+	cpu.fetch();
+	cpu.fetch();
 
 	for (;;) {
 		cpu.step();
