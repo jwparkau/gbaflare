@@ -32,7 +32,7 @@ constexpr static ThumbInstruction *decode_op(u32 op)
 	}
 
 	if (op >> 7 == 7) {
-		u32 h = op >> 1 & BITMASK(2);
+		u32 h = op >> 5 & BITMASK(2);
 #include "THUMB_BRANCH.gencpp"
 	}
 
@@ -157,9 +157,7 @@ template <u32 h>
 void thumb_branch(u16 op)
 {
 	u32 imm = op & BITMASK(11);
-	imm <<= 21;
-	s32 nn = imm;
-	nn >>= 21;
+	s32 nn = (s32)(imm << 21) >> 21;
 
 	u32 *lr = cpu.get_lr();
 
@@ -170,7 +168,7 @@ void thumb_branch(u16 op)
 		*lr = cpu.pc + (nn << 12);
 	} else if constexpr (h == 3) {
 		u32 old_pc = cpu.pc;
-		cpu.pc = *lr + nn * 2;
+		cpu.pc = *lr + imm * 2;
 		*lr = (old_pc - 2) | 1;
 		cpu.flush_pipeline();
 	}

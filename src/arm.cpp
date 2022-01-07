@@ -576,6 +576,10 @@ void arm_misc_dt(u32 op)
 	u32 *rd = cpu.get_reg(op >> 12 & BITMASK(4));
 
 	if constexpr (imm_offset == 1) {
+		/*
+		u32 immh = op >> 8 & BITMASK(4);
+		u32 imml = op & BITMASK(4);
+		*/
 		u32 offset = ((op >> 8 & BITMASK(4)) << 4) | (op & BITMASK(4));
 		ADDRESS_WRITE;
 	} else {

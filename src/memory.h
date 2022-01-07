@@ -17,7 +17,7 @@ constexpr addr_t EWRAM_START = 0x0200'0000;
 constexpr addr_t IWRAM_START = 0x0300'0000;
 constexpr addr_t IO_START = 0x0400'0000;
 constexpr addr_t PALETTE_RAM_START = 0x0500'0000;
-constexpr addr_t VRAM_START = 0x0600'8000;
+constexpr addr_t VRAM_START = 0x0600'0000;
 constexpr addr_t OAM_START = 0x0700'0000;
 constexpr addr_t CARTRIDGE_START = 0x0800'0000;
 

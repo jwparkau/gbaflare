@@ -91,5 +91,7 @@ struct Cpu {
 
 extern Cpu cpu;
 
+extern bool debug;
+
 
 #endif
