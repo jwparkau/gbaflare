@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
+import os
 
 generate_groups = (
     ("BRANCH_INSTR.gencpp", (("link", 2),), "arm_branch"),
     ("ALU_INSTR.gencpp", (("is_imm", 2), ("aluop", 16), ("set_cond", 2), ("shift_type", 4), ("shift_by_reg", 2)), "arm_alu"),
     ("MUL_INSTR.gencpp", (("mulop", 0, (0, 1, 4, 5, 6, 7)), ("set_cond", 2)), "arm_mul"),
-    ("PSR_INSTR.gencpp", (("r", 2), ("dir", 2)), "arm_psr"),
+    ("PSR_INSTR.gencpp", (("psr", 2), ("dir", 2)), "arm_psr"),
     ("SDT_INSTR.gencpp", (("reg_offset", 2), ("prepost", 2), ("updown", 2), ("byteword", 2), ("writeback", 2), ("load", 2), ("shift_type", 4)), "arm_sdt"),
     ("SWP_INSTR.gencpp", (("byteword", 2),), "arm_swp"),
     ("MISC_DT_INSTR.gencpp", (("prepost", 2), ("updown", 2), ("imm_offset", 2), ("writeback", 2), ("load", 2), ("sign", 2), ("half", 2)), "arm_misc_dt"),
@@ -20,10 +20,15 @@ generate_groups = (
     ("THUMB_LOADSTORE_IMM.gencpp", (("code", 4),), "thumb_loadstore_imm"),
     ("THUMB_LOADSTORE_HALF.gencpp", (("code", 2),), "thumb_loadstore_half"),
     ("THUMB_LOADSTORE_SP.gencpp", (("code", 2),), "thumb_loadstore_sp"),
-    ("THUMB_PUSHPOP.gencpp", (("code", 2), ("pclr", 2)), "thumb_pushpop")
+    ("THUMB_PUSHPOP.gencpp", (("code", 2), ("pclr", 2)), "thumb_pushpop"),
+    ("THUMB_ADDPCSP.gencpp", (("code", 2),), "thumb_addpcsp"),
+    ("THUMB_SPADD.gencpp", (("code", 2),), "thumb_sp_add"),
+    ("THUMB_MULTIPLE.gencpp", (("code", 2),), "thumb_multiple"),
+    ("ARM_MSR_IMM.gencpp", (("psr", 2),), "arm_msr_imm")
 )
 
-dirname = "src/"
+dirname = "src/gencpp/"
+os.makedirs(os.path.dirname(dirname), exist_ok=True)
 filename = ""
 functionname = ""
 f = ""

@@ -11,6 +11,14 @@ u32 rrx(u32 x, bool &carry);
 
 u32 align(u32 addr, u32 x);
 
+#define WRITE_PC(x) \
+cpu.pc = (x);\
+cpu.flush_pipeline();
+
+#define BRANCH_X_RM \
+cpu.set_flag(T_STATE, rm & BIT(0));\
+WRITE_PC(rm & 0xFFFFFFFE);
+
 #define GET_CPU_FLAGS \
 bool N = cpu.CPSR & SIGN_FLAG;\
 bool Z = cpu.CPSR & ZERO_FLAG;\
@@ -45,5 +53,57 @@ NZ_FLAGS_RD;
 #define ADD_STYLE \
 AND_STYLE;\
 CV_FLAGS_ADD;
+
+#define __WRITE_MULTIPLE(x, target) \
+for (int i = 0; i <= (x); i++) {\
+	if (register_list & BIT(i)) {\
+		cpu.cpu_write32(address, (target));\
+		address += 4;\
+	}\
+}
+
+#define __READ_MULTIPLE(x, target) \
+for (int i = 0; i <= (x); i++) {\
+	if (register_list & BIT(i)) {\
+		(target) = cpu.cpu_read32(address);\
+		address += 4;\
+	}\
+}
+
+#define READ_MULTIPLE(x) \
+__READ_MULTIPLE((x), *cpu.get_reg(i));
+
+#define WRITE_MULTIPLE(x) \
+__WRITE_MULTIPLE((x), *cpu.get_reg(i));
+
+#define READ_MULTIPLE_FORCE_USER(x) \
+__READ_MULTIPLE((x), cpu.registers[0][i]);
+
+#define WRITE_MULTIPLE_FORCE_USER(x) \
+__WRITE_MULTIPLE((x), cpu.registers[0][i]);
+
+#define BARREL_SHIFTER(x, k) \
+if constexpr (shift_type == 0) {\
+	(x) = lsl(rm, imm, k);\
+} else if constexpr (shift_type == 1) {\
+	(x) = lsr(rm, (imm == 0) ? 32 : imm, k);\
+} else if constexpr (shift_type == 2) {\
+	(x) = asr(rm, (imm == 0) ? 32 : imm, k);\
+} else {\
+	if (imm == 0) {\
+		(x) = rrx(rm, k);\
+	} else {\
+		(x) = ror(rm, imm, k);\
+	}\
+}
+
+
+#define EXCEPTION_PROLOGUE(mode, flag) \
+cpu.registers[mode][14] = cpu.pc - 4;\
+cpu.SPSR[mode] = cpu.CPSR;\
+cpu.CPSR = (cpu.CPSR & ~BITMASK(5)) | (flag);\
+cpu.update_mode();\
+cpu.set_flag(T_STATE, 0);\
+cpu.set_flag(IRQ_DISABLE, 1);
 
 #endif

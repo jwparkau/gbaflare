@@ -5,6 +5,8 @@
 
 struct PPU {
 	u16 framebuffer[240 * 160];
+
+	void copy_framebuffer_mode4();
 };
 
 extern PPU ppu;

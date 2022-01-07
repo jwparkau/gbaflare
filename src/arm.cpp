@@ -14,8 +14,8 @@ template <u32 link> void arm_branch(u32 op);
 void arm_bx(u32 op);
 template <u32 is_imm, u32 aluop, u32 set_cond, u32 shift_type, u32 shift_by_reg> void arm_alu(u32 op);
 template <u32 mulop, u32 set_cond> void arm_mul(u32 op);
-template <u32 r, u32 dir> void arm_psr(u32 op);
-template <u32 r> void arm_msr_imm(u32 op);
+template <u32 psr, u32 dir> void arm_psr(u32 op);
+template <u32 psr> void arm_msr_imm(u32 op);
 template <u32 reg_offset, u32 prepost, u32 updown, u32 byteword, u32 writeback, u32 load, u32 shift_type> void arm_sdt(u32 op);
 template <u32 prepost, u32 updown, u32 imm_offset, u32 writeback, u32 load, u32 sign, u32 half> void arm_misc_dt(u32 op);
 template <u32 prepost, u32 updown, u32 psr, u32 writeback, u32 load> void arm_block_dt(u32 op);
@@ -73,7 +73,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 	// branch instructions
 	if (op1 >> 5 == 5) {
 		u32 link = op1 >> 4 & 1;
-#include "BRANCH_INSTR.gencpp"
+#include "gencpp/BRANCH_INSTR.gencpp"
 	}
 
 	// misc
@@ -82,18 +82,14 @@ constexpr static ArmInstruction *decode_op(u32 op)
 	}
 
 	if (op1 >> 3 == 2 && (op1 & 1) == 0 && op2 == 0) {
-		u32 r = op1 >> 2 & 1;
+		u32 psr = op1 >> 2 & 1;
 		u32 dir = op1 >> 1 & 1;
-#include "PSR_INSTR.gencpp"
+#include "gencpp/PSR_INSTR.gencpp"
 	}
 
 	if (op1 >> 3 == 6 && (op1 & BITMASK(2)) == 2) {
-		u32 r = op1 >> 2 & 1;
-		if (r == 1) {
-			return arm_msr_imm<1>;
-		} else {
-			return arm_msr_imm<0>;
-		}
+		u32 psr = op1 >> 2 & 1;
+#include "gencpp/ARM_MSR_IMM.gencpp"
 	}
 
 	// alu
@@ -103,19 +99,19 @@ constexpr static ArmInstruction *decode_op(u32 op)
 		u32 set_cond = (bool)(op1 & 1);
 		u32 shift_type = op2 >> 1 & BITMASK(2);
 		u32 shift_by_reg = (bool)(op2 & 1);
-#include "ALU_INSTR.gencpp"
+#include "gencpp/ALU_INSTR.gencpp"
 	}
 
 	if (op1 >> 3 == 2 && (op1 & BITMASK(2)) == 0 && op2 == 9) {
 		u32 byteword = (bool)(op1 >> 2 & 1);
-#include "SWP_INSTR.gencpp"
+#include "gencpp/SWP_INSTR.gencpp"
 	}
 
 	// multiply
 	if (is_mul_op(op)) {
 		u32 mulop = op1 >> 1 & BITMASK(4);
 		u32 set_cond = (bool)(op1 & 1);
-#include "MUL_INSTR.gencpp"
+#include "gencpp/MUL_INSTR.gencpp"
 	}
 
 	if (op1 >> 5 == 0 && (op2 & 1) == 1 && (op2 >> 3) == 1 && op2 != 9 && (!(op2 & BIT(2) && (op1 & 1) == 0))) {
@@ -126,7 +122,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 		u32 load = (bool)(op1 & BIT(0));
 		u32 sign = (bool)(op2 & BIT(2));
 		u32 half = (bool)(op2 & BIT(1));
-#include "MISC_DT_INSTR.gencpp"
+#include "gencpp/MISC_DT_INSTR.gencpp"
 	}
 
 
@@ -139,7 +135,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 		u32 writeback = (bool)(op1 & BIT(1));
 		u32 load = (bool)(op1 & BIT(0));
 		u32 shift_type = op2 >> 1 & BITMASK(2);
-#include "SDT_INSTR.gencpp"
+#include "gencpp/SDT_INSTR.gencpp"
 	}
 
 	if (op1 >> 5 == 4) {
@@ -148,7 +144,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 		u32 psr = (bool)(op1 & BIT(2));
 		u32 writeback = (bool)(op1 & BIT(1));
 		u32 load = (bool)(op1 & BIT(0));
-#include "BLOCK_DT_INSTR.gencpp"
+#include "gencpp/BLOCK_DT_INSTR.gencpp"
 	}
 
 	if (op1 >> 4 == 15) {
@@ -178,10 +174,8 @@ const arm_lut_t arm_lut = init_lut();
 template<u32 link>
 void arm_branch(u32 op)
 {
-	u32 offset = op & BITMASK(24);
-	offset <<= 8;
-	s32 nn = offset;
-	nn >>= 8;
+	u32 imm = op & BITMASK(24);
+	s32 nn = (s32)(imm << 8) >> 8;
 
 	u32 *lr = cpu.get_lr();
 
@@ -189,29 +183,23 @@ void arm_branch(u32 op)
 		*lr = cpu.pc - 4;
 	}
 
-	cpu.pc = cpu.pc + nn * 4;
-	cpu.flush_pipeline();
+	WRITE_PC(cpu.pc + nn * 4);
 }
 
 void arm_bx(u32 op)
 {
 	u32 rm = *cpu.get_reg(op & BITMASK(4));
 
-	cpu.set_flag(T_STATE, rm & BIT(0));
-	cpu.pc = rm & 0xFFFFFFFE;
-
-	cpu.flush_pipeline();
+	BRANCH_X_RM;
 }
 
 template <u32 is_imm, u32 aluop, u32 set_cond, u32 shift_type, u32 shift_by_reg>
 void arm_alu(u32 op)
 {
+	GET_CPU_FLAGS;
+
 	u32 operand;
-	bool N = cpu.CPSR & SIGN_FLAG;
-	bool Z = cpu.CPSR & ZERO_FLAG;
-	bool C = cpu.CPSR & CARRY_FLAG;
 	bool old_carry = C;
-	bool V = cpu.CPSR & OVERFLOW_FLAG;
 
 	if constexpr (is_imm) {
 		u32 imm = op & BITMASK(8);
@@ -232,19 +220,7 @@ void arm_alu(u32 op)
 			}
 		} else {
 			u32 imm = op >> 7 & BITMASK(5);
-			if constexpr (shift_type == 0) {
-				operand = lsl(rm, imm, C);
-			} else if constexpr (shift_type == 1) {
-				operand = lsr(rm, (imm == 0) ? 32 : imm, C);
-			} else if constexpr (shift_type == 2) {
-				operand = asr(rm, (imm == 0) ? 32 : imm, C);
-			} else {
-				if (imm == 0) {
-					operand = rrx(rm, C);
-				} else {
-					operand = ror(rm, imm, C);
-				}
-			}
+			BARREL_SHIFTER(operand, C);
 		}
 	}
 
@@ -255,7 +231,6 @@ void arm_alu(u32 op)
 
 	bool copy_spsr = false;
 	bool pc_written = false;
-
 
 	if constexpr (aluop == OP_AND) {
 		u32 r = *rd = rn & operand;
@@ -326,10 +301,7 @@ void arm_alu(u32 op)
 			cpu.CPSR = spsr;
 			cpu.update_mode();
 		} else {
-			cpu.set_flag(SIGN_FLAG, N);
-			cpu.set_flag(ZERO_FLAG, Z);
-			cpu.set_flag(CARRY_FLAG, C);
-			cpu.set_flag(OVERFLOW_FLAG, V);
+			WRITE_CPU_FLAGS;
 		}
 	}
 
@@ -346,19 +318,26 @@ void arm_alu(u32 op)
 template <u32 mulop, u32 set_cond>
 void arm_mul(u32 op)
 {
-	bool N = cpu.CPSR & SIGN_FLAG;
-	bool Z = cpu.CPSR & ZERO_FLAG;
+	GET_CPU_FLAGS;
 
 	u32 rm = *cpu.get_reg(op & BITMASK(4));
 	u32 rs = *cpu.get_reg(op >> 8 & BITMASK(4));
 	u32 *rd = cpu.get_reg(op >> 16 & BITMASK(4));
 	u32 *rn = cpu.get_reg(op >> 12 & BITMASK(4));
 
-#define NZ_FLAGS_LONG \
-do {\
-	N = *rd & BIT(31);\
-	Z = (*rd == 0 && *rn == 0) ? 1 : 0;\
-} while (0);
+#define NZ_FLAGS_LONG N = *rd & BIT(31); Z = (*rd == 0 && *rn == 0) ? 1 : 0;
+
+#define MULTIPLY_LONG_CARRY \
+u64 result_lo = (result & BITMASK(32)) + *rn;\
+bool lo_carry = result_lo > 0xFFFF'FFFF;\
+*rn = result_lo;\
+*rd = (result >> 32) + *rd + lo_carry;\
+NZ_FLAGS_LONG;
+
+#define MULTIPLY_LONG \
+*rd = result >> 32;\
+*rn = result;\
+NZ_FLAGS_LONG;
 
 	if constexpr (mulop == 0) {
 		u32 r = *rd = rm * rs;
@@ -368,84 +347,66 @@ do {\
 		NZ_FLAGS_RD;
 	} else if constexpr (mulop == 4) {
 		u64 result = (u64)rm * rs;
-		*rd = result >> 32;
-		*rn = result;
-		NZ_FLAGS_LONG;
+		MULTIPLY_LONG;
 	} else if constexpr (mulop == 5) {
 		u64 result = (u64)rm * rs;
-		u64 result_lo = (result & BITMASK(32)) + *rn;
-		bool lo_carry = result_lo > 0xFFFF'FFFF;
-		*rn = result_lo;
-		*rd = (result >> 32) + *rd + lo_carry;
-		NZ_FLAGS_LONG;	
+		MULTIPLY_LONG_CARRY;
 	} else if constexpr (mulop == 6) {
 		s64 result = (s64)(s32)rm * (s32)rs;
-		*rd = result >> 32;
-		*rn = result;
-		NZ_FLAGS_LONG;
+		MULTIPLY_LONG;
 	} else if constexpr (mulop == 7) {
 		s64 result = (s64)(s32)rm * (s32)rs;
-		u64 result_lo = (result & BITMASK(32)) + *rn;
-		bool lo_carry = result_lo > 0xFFFF'FFFF;
-		*rn = result_lo;
-		*rd = (result >> 32) + *rd + lo_carry;
-		NZ_FLAGS_LONG;
+		MULTIPLY_LONG_CARRY;
 	}
 
 	if constexpr (set_cond) {
-		cpu.set_flag(SIGN_FLAG, N);
-		cpu.set_flag(ZERO_FLAG, Z);
+		WRITE_CPU_FLAGS;
 	}
 }
 
-template <u32 r, u32 dir>
+template <u32 psr, u32 dir>
 void arm_psr(u32 op)
 {
 	if constexpr (dir == 0) {
 		u32 *rd = cpu.get_reg(op >> 12 & BITMASK(4));
-		if constexpr (r == 1) {
+		if constexpr (psr == 1) {
 			*rd = *cpu.get_spsr();
 		} else {
 			*rd = cpu.CPSR;
 		}
 	} else {
-	u32 rm = *cpu.get_reg(op & BITMASK(4));
-	u32 operand = rm;
+		u32 operand = *cpu.get_reg(op & BITMASK(4));
+
+#define CREATE_MASK \
+u32 mask = 0;\
+for (int i = 0; i < 4; i++) {\
+	if (field_mask & BIT(i)) {\
+		mask |= BITMASK(8) << i * 8;\
+	}\
+}
 
 #define MSR_STYLE \
-do {\
-	u32 field_mask = op >> 16 & BITMASK(4);\
-	if constexpr (r == 0) {\
-		if (!cpu.in_privileged_mode()) {\
-			field_mask &= ~BITMASK(3);\
-		}\
-		u32 mask = 0;\
-		for (int i = 0; i < 4; i++) {\
-			if (field_mask & BIT(i)) {\
-				mask |= BITMASK(8) << i * 8;\
-			}\
-		}\
-		cpu.CPSR = (cpu.CPSR & ~mask) | (operand & mask);\
-		cpu.update_mode();\
-	} else {\
-		if (cpu.has_spsr()) {\
-			u32 mask = 0;\
-			for (int i = 0; i < 4; i++) {\
-				if (field_mask & BIT(i)) {\
-					mask |= BITMASK(8) << i * 8;\
-				}\
-			}\
-			u32 *spsr = cpu.get_spsr();\
-			*spsr = (*spsr & ~mask) | (operand & mask);\
-		}\
+u32 field_mask = op >> 16 & BITMASK(4);\
+if constexpr (psr == 0) {\
+	if (!cpu.in_privileged_mode()) {\
+		field_mask &= ~BITMASK(3);\
 	}\
-} while (0);
+	CREATE_MASK;\
+	cpu.CPSR = (cpu.CPSR & ~mask) | (operand & mask);\
+	cpu.update_mode();\
+} else {\
+	if (cpu.has_spsr()) {\
+		CREATE_MASK;\
+		u32 *spsr = cpu.get_spsr();\
+		*spsr = (*spsr & ~mask) | (operand & mask);\
+	}\
+}
 
-	MSR_STYLE;
+		MSR_STYLE;
 	}
 }
 
-template <u32 r>
+template <u32 psr>
 void arm_msr_imm(u32 op)
 {
 	u32 imm = op & BITMASK(8);
@@ -468,26 +429,23 @@ void arm_sdt(u32 op)
 	u32 *rn = cpu.get_reg(op >> 16 & BITMASK(4));
 
 #define ADDRESS_WRITE \
-do {\
-	if constexpr (prepost == 1) {\
-		if constexpr (updown) {\
-			address = *rn + offset;\
-		} else {\
-			address = *rn - offset;\
-		}\
-\
-		if constexpr (writeback) {\
-			*rn = address;\
-		}\
+if constexpr (prepost == 1) {\
+	if constexpr (updown) {\
+		address = *rn + offset;\
 	} else {\
-		address = *rn;\
-		if constexpr (updown) {\
-			*rn = *rn + offset;\
-		} else {\
-			*rn = *rn - offset;\
-		}\
+		address = *rn - offset;\
 	}\
-} while (0);
+	if constexpr (writeback) {\
+		*rn = address;\
+	}\
+} else {\
+	address = *rn;\
+	if constexpr (updown) {\
+		*rn = *rn + offset;\
+	} else {\
+		*rn = *rn - offset;\
+	}\
+}
 
 	bool carry = cpu.CPSR & CARRY_FLAG;
 
@@ -499,19 +457,7 @@ do {\
 		u32 imm = op >> 7 & BITMASK(5);
 		u32 rm = *cpu.get_reg(op & BITMASK(4));
 
-		if constexpr (shift_type == 0) {
-			offset = lsl(rm, imm, carry);
-		} else if constexpr (shift_type == 1) {
-			offset = lsr(rm, (imm == 0) ? 32 : imm, carry);
-		} else if constexpr (shift_type == 2) {
-			offset = asr(rm, (imm == 0) ? 32 : imm, carry);
-		} else {
-			if (imm == 0) {
-				offset = rrx(rm, carry);
-			} else {
-				offset = ror(rm, imm, carry);
-			}
-		}
+		BARREL_SHIFTER(offset, carry);
 		ADDRESS_WRITE;
 	}
 
@@ -575,17 +521,14 @@ void arm_misc_dt(u32 op)
 	u32 *rn = cpu.get_reg(op >> 16 & BITMASK(4));
 	u32 *rd = cpu.get_reg(op >> 12 & BITMASK(4));
 
+	u32 offset;
 	if constexpr (imm_offset == 1) {
-		/*
-		u32 immh = op >> 8 & BITMASK(4);
-		u32 imml = op & BITMASK(4);
-		*/
-		u32 offset = ((op >> 8 & BITMASK(4)) << 4) | (op & BITMASK(4));
-		ADDRESS_WRITE;
+		offset = ((op >> 8 & BITMASK(4)) << 4) | (op & BITMASK(4));
 	} else {
-		u32 offset = *cpu.get_reg(op & BITMASK(4));
-		ADDRESS_WRITE;
+		offset = *cpu.get_reg(op & BITMASK(4));
 	}
+
+	ADDRESS_WRITE;
 
 	if constexpr (load == 1 && half == 0) {
 		*rd = (s8)cpu.cpu_read8(address);	
@@ -631,66 +574,31 @@ void arm_block_dt(u32 op)
 		}
 	}
 
-	if constexpr (load == 1 && psr == 0) {
-		u32 address = align(start_address, 4);
+	u32 address = align(start_address, 4);
 
-		for (int i = 0; i <= 14; i++) {
-			if (register_list & BIT(i)) {
-				*cpu.get_reg(i) = cpu.cpu_read32(address);
-				address += 4;
-			}
-		}
+	if constexpr (load == 1 && psr == 0) {
+		READ_MULTIPLE(14);
 
 		if (register_list & BIT(15)) {
-			u32 value = cpu.cpu_read32(address);
-			cpu.pc = value & 0xFFFF'FFFC;
-			cpu.flush_pipeline();
-			address += 4;
+			WRITE_PC(cpu.cpu_read32(address) & 0xFFFF'FFFC);
 		}
 	} else if (load == 1 && writeback == 0 && psr == 1 && !(op & BIT(15))) {
-		u32 address = align(start_address, 4);
-		for (int i = 0; i <= 14; i++) {
-			if (register_list & BIT(i)) {
-				cpu.registers[0][i] = cpu.cpu_read32(address);
-				address += 4;
-			}
-		}
+		READ_MULTIPLE_FORCE_USER(14);
+
 	} else if (load == 1 && psr == 1 && (op & BIT(15))) {
-		u32 address = align(start_address, 4);
-		for (int i = 0; i <= 14; i++) {
-			if (register_list & BIT(i)) {
-				*cpu.get_reg(i) = cpu.cpu_read32(address);
-				address += 4;
-			}
-		}
+		READ_MULTIPLE(14);
 
 		cpu.CPSR = *cpu.get_spsr();
 		cpu.update_mode();
 
-		u32 value = cpu.cpu_read32(address);
-		if (cpu.CPSR & T_STATE) {
-			cpu.pc = value & 0xFFFF'FFFE;
-		} else {
-			cpu.pc = value & 0xFFFF'FFFC;
-		}
+		u32 mask = (cpu.CPSR & T_STATE) ? 0xFFFF'FFFE : 0xFFFF'FFFC;
+		WRITE_PC(cpu.cpu_read32(address) & mask);
 
-		cpu.flush_pipeline();
 	} else if constexpr (load == 0 && psr == 0) {
-		u32 address = align(start_address, 4);
-		for (int i = 0; i <= 15; i++) {
-			if (register_list & BIT(i)) {
-				cpu.cpu_write32(address, *cpu.get_reg(i));
-				address += 4;
-			}
-		}
+		WRITE_MULTIPLE(15);
+
 	} else if constexpr (load == 0 && writeback == 0 && psr == 1) {
-		u32 address = align(start_address, 4);
-		for (int i = 0; i <= 14; i++) {
-			if (register_list & BIT(i)) {
-				cpu.cpu_write32(address, cpu.registers[0][i]);
-				address += 4;
-			}
-		}
+		WRITE_MULTIPLE_FORCE_USER(14);
 
 		if (register_list & BIT(15)) {
 			cpu.cpu_write32(address, cpu.pc);
@@ -701,26 +609,12 @@ void arm_block_dt(u32 op)
 
 void arm_swi(u32 op)
 {
-	cpu.registers[SUPERVISOR][14] = cpu.pc - 4;
-	cpu.SPSR[SUPERVISOR] = cpu.CPSR;
-
-	cpu.CPSR = (cpu.CPSR & ~BITMASK(5)) | 0x13;
-	cpu.update_mode();
-	cpu.set_flag(T_STATE, 0);
-	cpu.set_flag(IRQ_DISABLE, 1);
-
-	cpu.pc = VECTOR_SWI;
+	EXCEPTION_PROLOGUE(SUPERVISOR, 0x13);
+	WRITE_PC(VECTOR_SWI);
 }
 
 void arm_bkpt(u32 op)
 {
-	cpu.registers[ABORT][14] = cpu.pc - 4;
-	cpu.SPSR[ABORT] = cpu.CPSR;
-
-	cpu.CPSR = (cpu.CPSR & ~BITMASK(5)) | 0x17;
-	cpu.update_mode();
-	cpu.set_flag(T_STATE, 0);
-	cpu.set_flag(IRQ_DISABLE, 1);
-
-	cpu.pc = VECTOR_PREFETCH_ABORT;
+	EXCEPTION_PROLOGUE(ABORT, 0x17);
+	WRITE_PC(VECTOR_PREFETCH_ABORT);
 }
