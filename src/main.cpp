@@ -42,10 +42,13 @@ int main(int argc, char **argv)
 	u64 tick_start = SDL_GetPerformanceCounter();
 	u64 freq = SDL_GetPerformanceFrequency();
 
+	u16 joypad_state = 0xFFFF;
+
 	u32 t = 0;
 	for (;;) {
 		if (t % 1232 == 0) {
-			platform.handle_input();
+			platform.handle_input(joypad_state);
+			Memory::write16(0x04000130, joypad_state);
 		}
 		if (!emulator_running) {
 			break;

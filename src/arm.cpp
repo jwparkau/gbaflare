@@ -206,13 +206,19 @@ void arm_alu(u32 op)
 		u32 rotate_imm = op >> 8 & BITMASK(4);
 		operand = ror(imm, rotate_imm * 2, C);
 	} else {
-		u32 rm = *cpu.get_reg(op & BITMASK(4));
+		u32 rmi = op & BITMASK(4);
+		u32 rm = *cpu.get_reg(rmi);
+
 		if constexpr (shift_by_reg) {
+			if (rmi == 15) {
+				rm += 4;
+			}
 			u32 rs = *cpu.get_reg(op >> 8 & BITMASK(4)) & BITMASK(8);
 			if constexpr (shift_type == 0) {
 				operand = lsl(rm, rs, C);
 			} else if constexpr (shift_type == 1) {
 				operand = lsr(rm, rs, C);
+				printf("%08X %08X %d %08X %d\n", op, operand, rs, rm, C);
 			} else if constexpr (shift_type == 2) {
 				operand = asr(rm, rs, C);
 			} else {

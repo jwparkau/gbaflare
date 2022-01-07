@@ -37,7 +37,7 @@ Z = (r == 0) ? 1 : 0;
 
 #define CV_FLAGS_ADD \
 C = result > 0xFFFF'FFFF;\
-V = (rn ^ r) & (operand & r) & 0x8000'0000;
+V = (rn ^ r) & (operand ^ r) & 0x8000'0000;
 
 #define CV_FLAGS_SUB \
 C = !(rn < operand);\

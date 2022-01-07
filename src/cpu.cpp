@@ -91,6 +91,7 @@ void Cpu::thumb_execute()
 	if (fp) {
 		fp(op);
 	} else {
+		fprintf(stderr, "UNHANDLED %04X\n", op);
 		throw std::runtime_error("unhandled opcode");
 	}
 }
@@ -155,6 +156,7 @@ void Cpu::arm_execute()
 		if (fp) {
 			fp(op);
 		} else {
+			fprintf(stderr, "UNHANDLED %08X\n", op);
 			throw std::runtime_error("unhandled opcode");
 		}
 	}
@@ -305,9 +307,9 @@ void Cpu::dump_registers()
 	}
 
 	if (in_thumb_state()) {
-		fprintf(stderr, "%08X ", pc - 2);
+		fprintf(stderr, "%08X ", pc);
 	} else {
-		fprintf(stderr, "%08X ", pc - 4);
+		fprintf(stderr, "%08X ", pc);
 	}
 
 	fprintf(stderr, "cpsr: %08X |", CPSR);

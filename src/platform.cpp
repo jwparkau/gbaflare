@@ -6,6 +6,23 @@
 Platform platform;
 bool emulator_running = false;
 
+enum joypad_buttons {
+	BUTTON_A,
+	BUTTON_B,
+	BUTTON_SELECT,
+	BUTTON_START,
+	BUTTON_RIGHT,
+	BUTTON_LEFT,
+	BUTTON_UP,
+	BUTTON_DOWN,
+	BUTTON_R,
+	BUTTON_L,
+	NOT_MAPPED
+};
+
+static joypad_buttons translate_sym(SDL_Keycode sym);
+static void update_joypad(joypad_buttons button, bool down, u16 &joypad_state);
+
 int Platform::init()
 {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
@@ -79,7 +96,7 @@ void Platform::render(u16 *pixels)
 	SDL_RenderPresent(renderer);
 }
 
-void Platform::handle_input()
+void Platform::handle_input(u16 &joypad_state)
 {
 	SDL_Event e;
 
@@ -88,6 +105,50 @@ void Platform::handle_input()
 			emulator_running = false;
 			break;
 		}
+
+		switch (e.type) {
+			case SDL_KEYDOWN:
+			case SDL_KEYUP:
+				update_joypad(translate_sym(e.key.keysym.sym), e.type == SDL_KEYDOWN, joypad_state);
+				break;
+		}
 	}
 
+}
+
+static void update_joypad(joypad_buttons button, bool down, u16 &joypad_state)
+{
+	if (button != NOT_MAPPED) {
+		if (down) {
+			joypad_state &= ~BIT(button);
+		} else {
+			joypad_state |= BIT(button);
+		}
+	}
+}
+
+static joypad_buttons translate_sym(SDL_Keycode sym)
+{
+	switch (sym) {
+		case SDLK_RIGHT:
+			return BUTTON_RIGHT;
+		case SDLK_LEFT:
+			return BUTTON_LEFT;
+		case SDLK_UP:
+			return BUTTON_UP;
+		case SDLK_DOWN:
+			return BUTTON_DOWN;
+		case SDLK_x:
+			return BUTTON_A;
+		case SDLK_z:
+			return BUTTON_B;
+		case SDLK_1:
+		case SDLK_RETURN:
+			return BUTTON_START;
+		case SDLK_2:
+		case SDLK_BACKSPACE:
+			return BUTTON_SELECT;
+		default:
+			return NOT_MAPPED;
+	}
 }

@@ -22,7 +22,7 @@ struct Platform {
 	int init();
 
 	void render(u16 *pixels);
-	void handle_input();
+	void handle_input(u16 &joypad_state);
 };
 
 extern Platform platform;
