@@ -218,7 +218,6 @@ void arm_alu(u32 op)
 				operand = lsl(rm, rs, C);
 			} else if constexpr (shift_type == 1) {
 				operand = lsr(rm, rs, C);
-				printf("%08X %08X %d %08X %d\n", op, operand, rs, rm, C);
 			} else if constexpr (shift_type == 2) {
 				operand = asr(rm, rs, C);
 			} else {
@@ -265,13 +264,13 @@ void arm_alu(u32 op)
 		s64 result = (s64)rn - operand - (!old_carry);
 		u32 r = *rd = result;
 		AND_STYLE;
-		C = result < 0;
+		C = !(result < 0);
 		V = (rn ^ operand) & (rn ^ r) & 0x8000'0000;
 	} else if constexpr (aluop == OP_RSC) {
 		s64 result = (s64)operand - rn - (!old_carry);
 		u32 r = *rd = result;
 		AND_STYLE;
-		C = result < 0;
+		C = !(result < 0);
 		V = (rn ^ operand) & (operand ^ r) & 0x8000'0000;
 	} else if constexpr (aluop == OP_TST) {
 		u32 r = rn & operand;
