@@ -9,6 +9,22 @@
 struct Cpu cpu;
 bool debug = false;
 
+#define OP_BUFFER_SIZE 1000
+u32 opbuffer[OP_BUFFER_SIZE];
+u32 pcbuffer[OP_BUFFER_SIZE];
+int opi;
+
+void dump_buffer()
+{
+	for (int i = opi-1; i >= 0; i--) {
+		printf("PC: %08X    OP: %08X\n", pcbuffer[i], opbuffer[i]);
+	}
+
+	for (int i = OP_BUFFER_SIZE-1; i >= opi; i--) {
+		printf("PC: %08X    OP: %08X\n", pcbuffer[i], opbuffer[i]);
+	}
+}
+
 void Cpu::reset()
 {
 }
@@ -36,6 +52,10 @@ void Cpu::step()
 	 * tick other hw
 	 */
 
+	opbuffer[opi] = pipeline[0];
+	pcbuffer[opi] = pc - (in_thumb_state() ? 4 : 8);
+
+	opi = (opi + 1) % OP_BUFFER_SIZE;
 	execute();
 	fetch();
 }
@@ -91,8 +111,9 @@ void Cpu::thumb_execute()
 	if (fp) {
 		fp(op);
 	} else {
-		fprintf(stderr, "UNHANDLED %04X\n", op);
-		throw std::runtime_error("unhandled opcode");
+		fprintf(stderr, "UNHANDLED THUMB %04X at %08X\n", op, pc - 4);
+		dump_buffer();
+		throw std::runtime_error("unhandled opcode in thumb mode");
 	}
 }
 
@@ -157,6 +178,7 @@ void Cpu::arm_execute()
 			fp(op);
 		} else {
 			fprintf(stderr, "UNHANDLED %08X\n", op);
+			dump_buffer();
 			throw std::runtime_error("unhandled opcode");
 		}
 	}

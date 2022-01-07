@@ -3,6 +3,7 @@
 #include "ops.h"
 
 #include <bit>
+#include <iostream>
 
 constexpr static thumb_lut_t init_thumb();
 constexpr static ThumbInstruction *decode_op(u32 op);
@@ -484,7 +485,7 @@ void thumb_pushpop(u16 op)
 		READ_MULTIPLE(7);
 
 		if constexpr (pclr) {
-			WRITE_PC(cpu.cpu_read32(address));
+			WRITE_PC(align(cpu.cpu_read32(address), 2));
 		}
 
 		*sp = end_address;
