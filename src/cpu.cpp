@@ -92,6 +92,47 @@ void Cpu::thumb_execute()
 	}
 }
 
+bool Cpu::cond_triggered(u32 cond)
+{
+	const bool N = CPSR & SIGN_FLAG;
+	const bool Z = CPSR & ZERO_FLAG;
+	const bool C = CPSR & CARRY_FLAG;
+	const bool V = CPSR & OVERFLOW_FLAG;
+
+	switch (cond) {
+		case 0:
+			return Z;
+		case 1:
+			return !Z;
+		case 2:
+			return C;
+		case 3:
+			return !C;
+		case 4:
+			return N;
+		case 5:
+			return !N;
+		case 6:
+			return V;
+		case 7:
+			return !V;
+		case 8:
+			return C && !Z;
+		case 9:
+			return !(C && !Z);
+		case 0xA:
+			return N == V;
+		case 0xB:
+			return !(N == V);
+		case 0xC:
+			return (!Z && N == V);
+		case 0xD:
+			return !(!Z && N == V);
+		default:
+			return true;
+	}
+}
+
 void Cpu::arm_execute()
 {
 	const u32 op = pipeline[0];
@@ -103,78 +144,14 @@ void Cpu::arm_execute()
 
 	const u32 cond = op >> 28 & BITMASK(4);
 
-	const bool N = CPSR & SIGN_FLAG;
-	const bool Z = CPSR & ZERO_FLAG;
-	const bool C = CPSR & CARRY_FLAG;
-	const bool V = CPSR & OVERFLOW_FLAG;
-
-	switch (cond) {
-		case 0:
-			if (!Z)
-				return;
-			break;
-		case 1:
-			if (!!Z)
-				return;
-			break;
-		case 2:
-			if (!C)
-				return;
-			break;
-		case 3:
-			if (!!C)
-				return;
-			break;
-		case 4:
-			if (!N)
-				return;
-			break;
-		case 5:
-			if (!!N)
-				return;
-			break;
-		case 6:
-			if (!V)
-				return;
-			break;
-		case 7:
-			if (!!V)
-				return;
-			break;
-		case 8:
-			if (!(C && !Z))
-				return;
-			break;
-		case 9:
-			if (!(!C || Z))
-				return;
-			break;
-		case 0xA:
-			if (!(N == V))
-				return;
-			break;
-		case 0xB:
-			if (!(N != V))
-				return;
-			break;
-		case 0xC:
-			if (!(!Z && N == V))
-				return;
-			break;
-		case 0xD:
-			if (!(Z || N != V))
-				return;
-			break;
-		default:
-			break;
-	}
-
-	const u32 lut_offset = (op1 << 4) + op2;
-	ArmInstruction *fp = arm_lut[lut_offset];
-	if (fp) {
-		fp(op);
-	} else {
-		throw std::runtime_error("unhandled opcode");
+	if (cond_triggered(cond)) {
+		const u32 lut_offset = (op1 << 4) + op2;
+		ArmInstruction *fp = arm_lut[lut_offset];
+		if (fp) {
+			fp(op);
+		} else {
+			throw std::runtime_error("unhandled opcode");
+		}
 	}
 }
 
@@ -250,6 +227,16 @@ u32 *Cpu::get_reg(int i)
 u32 *Cpu::get_spsr()
 {
 	return &SPSR[cpu_mode % 6];
+}
+
+u32 *Cpu::get_sp()
+{
+	return &registers[cpu_mode % 6][13];
+}
+
+u32 *Cpu::get_lr()
+{
+	return &registers[cpu_mode % 6][14];
 }
 
 void Cpu::set_flag(u32 flag, bool x)

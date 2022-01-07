@@ -9,7 +9,18 @@ generate_groups = (
     ("SDT_INSTR.gencpp", (("reg_offset", 2), ("prepost", 2), ("updown", 2), ("byteword", 2), ("writeback", 2), ("load", 2), ("shift_type", 4)), "arm_sdt"),
     ("SWP_INSTR.gencpp", (("byteword", 2),), "arm_swp"),
     ("MISC_DT_INSTR.gencpp", (("prepost", 2), ("updown", 2), ("imm_offset", 2), ("writeback", 2), ("load", 2), ("sign", 2), ("half", 2)), "arm_misc_dt"),
-    ("BLOCK_DT_INSTR.gencpp", (("prepost", 2), ("updown", 2), ("psr", 2), ("writeback", 2), ("load", 2)), "arm_block_dt")
+    ("BLOCK_DT_INSTR.gencpp", (("prepost", 2), ("updown", 2), ("psr", 2), ("writeback", 2), ("load", 2)), "arm_block_dt"),
+    ("THUMB_BRANCH.gencpp", (("h", 0, (0, 2, 3)),), "thumb_branch"),
+    ("THUMB_SHIFT_REG.gencpp", (("shift_type", 0, (0, 1, 2)),), "thumb_shift_reg"),
+    ("THUMB_ADDSUB.gencpp", (("aluop", 4),), "thumb_addsub"),
+    ("THUMB_ADDSUBCMPMOV.gencpp", (("aluop", 4),), "thumb_addsubcmpmov"),
+    ("THUMB_ALU.gencpp", (("aluop", 16),), "thumb_alu"),
+    ("THUMB_SPECIAL.gencpp", (("aluop", 0, (0, 1, 2)),), "thumb_special_data"),
+    ("THUMB_LOADSTORE_REG.gencpp", (("code", 8),), "thumb_loadstore_reg"),
+    ("THUMB_LOADSTORE_IMM.gencpp", (("code", 4),), "thumb_loadstore_imm"),
+    ("THUMB_LOADSTORE_HALF.gencpp", (("code", 2),), "thumb_loadstore_half"),
+    ("THUMB_LOADSTORE_SP.gencpp", (("code", 2),), "thumb_loadstore_sp"),
+    ("THUMB_PUSHPOP.gencpp", (("code", 2), ("pclr", 2)), "thumb_pushpop")
 )
 
 dirname = "src/"

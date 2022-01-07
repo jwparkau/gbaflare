@@ -45,7 +45,6 @@ struct Cpu {
 	u32 CPSR{};
 	u32 SPSR[6]{};
 	u32 pc{};
-	u32 *lr = &registers[0][14];
 
 	u32 cycles{};
 	u32 pipeline[2]{};
@@ -76,6 +75,8 @@ struct Cpu {
 
 	u32 *get_reg(int i);
 	u32 *get_spsr();
+	u32 *get_sp();
+	u32 *get_lr();
 
 	void set_flag(u32 flag, bool x);
 
@@ -84,8 +85,11 @@ struct Cpu {
 	bool has_spsr();
 
 	void dump_registers();
+
+	bool cond_triggered(u32 cond);
 };
 
 extern Cpu cpu;
+
 
 #endif
