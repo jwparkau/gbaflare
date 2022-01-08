@@ -14,6 +14,8 @@ u32 opbuffer[OP_BUFFER_SIZE];
 u32 pcbuffer[OP_BUFFER_SIZE];
 int opi;
 
+bool f = false;
+
 void dump_buffer()
 {
 	for (int i = opi-1; i >= 0; i--) {
@@ -36,6 +38,11 @@ void Cpu::fakeboot()
 	pc = CARTRIDGE_START;
 	CPSR = 0x6000'001F;
 	registers[0][13] = 0x03007F00;
+	registers[1][13] = 0x03007F00;
+	registers[2][13] = 0x03007F00;
+	registers[3][13] = 0x03007F00;
+	registers[4][13] = 0x03007F00;
+	registers[5][13] = 0x03007F00;
 }
 
 void Cpu::flush_pipeline()
@@ -91,10 +98,23 @@ void Cpu::thumb_fetch()
 
 void Cpu::execute()
 {
+	if (cpu.pc - 8 == 0x8000CD4) {
+		//f = true;
+	}
+	if (f) {
+		dump_registers();
+		fprintf(stderr, " %08X\n", pipeline[0]);
+	}
+
 	if (in_thumb_state()) {
 		thumb_execute();
 	} else {
 		arm_execute();
+	}
+
+	if (f) {
+		dump_registers();
+		fprintf(stderr, " -----END\n");
 	}
 }
 
@@ -324,8 +344,9 @@ bool Cpu::has_spsr()
 
 void Cpu::dump_registers()
 {
+
 	for (int i = 0; i < 15; i++) {
-		fprintf(stderr, "%08X ", registers[0][i]);
+		fprintf(stderr, "%08X ", registers[cpu_mode % 6][i]);
 	}
 
 	if (in_thumb_state()) {
@@ -335,4 +356,7 @@ void Cpu::dump_registers()
 	}
 
 	fprintf(stderr, "cpsr: %08X |", CPSR);
+	for (int i = 0; i < 2; i++) {
+		fprintf(stderr, "%08X ", SPSR[i]);
+	}
 }

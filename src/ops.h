@@ -50,6 +50,12 @@ if (rdi == 15) {\
 }\
 NZ_FLAGS_RD;
 
+#define TEST_STYLE \
+if (rdi == 15) {\
+	copy_spsr = true;\
+}\
+NZ_FLAGS_RD;
+
 #define ADD_STYLE \
 AND_STYLE;\
 CV_FLAGS_ADD;
@@ -96,6 +102,12 @@ if constexpr (shift_type == 0) {\
 		(x) = ror(rm, imm, k);\
 	}\
 }
+
+#define UNALIGNED_LOAD_ROR(x) \
+bool carry_ror = false;\
+u32 addr = align(address, (x));\
+u32 rem = address & ((x) - 1);\
+*rd = ror(cpu.cpu_read32(addr) & BITMASK((x) * 8), rem * 8, carry_ror);
 
 
 #define EXCEPTION_PROLOGUE(mode, flag) \

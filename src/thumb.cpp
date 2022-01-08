@@ -341,6 +341,7 @@ void thumb_special_data(u16 op)
 
 	if (pc_written) {
 		*rd = align(*rd, 2);
+		cpu.flush_pipeline();
 	}
 }
 
@@ -370,13 +371,23 @@ void thumb_loadstore_reg(u16 op)
 	} else if constexpr (code == 3) {
 		*rd = (s8)cpu.cpu_read8(address);
 	} else if constexpr (code == 4) {
-		*rd = cpu.cpu_read32(align(address, 4));
+		UNALIGNED_LOAD_ROR(4);
 	} else if constexpr (code == 5) {
-		*rd = cpu.cpu_read16(align(address, 2));
+		UNALIGNED_LOAD_ROR(2);
 	} else if constexpr (code == 6) {
 		*rd = cpu.cpu_read8(address);
 	} else if constexpr (code == 7) {
-		*rd = (s16)cpu.cpu_read16(align(address, 2));
+		u32 addr;
+		u32 rem;
+
+		addr = align(address, 2);
+		rem = address & BITMASK(1);
+
+		if (rem) {
+			*rd = (s8)cpu.cpu_read16(address);
+		} else {
+			*rd = (s16)cpu.cpu_read16(addr);
+		}
 	}
 }
 
@@ -392,7 +403,7 @@ void thumb_loadstore_imm(u16 op)
 		cpu.cpu_write32(align(address, 4), *rd);
 	} else if constexpr (code == 1) {
 		u32 address = rn + imm * 4;
-		*rd = cpu.cpu_read32(align(address, 4));
+		UNALIGNED_LOAD_ROR(4);
 	} else if constexpr (code == 2) {
 		u32 address = rn + imm;
 		cpu.cpu_write8(address, *rd & BITMASK(8));
@@ -414,7 +425,7 @@ void thumb_loadstore_half(u16 op)
 	if constexpr (code == 0) {
 		cpu.cpu_write16(align(address, 2), *rd & BITMASK(16));
 	} else if constexpr (code == 1) {
-		*rd = cpu.cpu_read16(align(address, 2));
+		UNALIGNED_LOAD_ROR(2);
 	}
 }
 
@@ -430,7 +441,7 @@ void thumb_loadstore_sp(u16 op)
 	if constexpr (code == 0) {
 		cpu.cpu_write32(align(address, 4), *rd);
 	} else if constexpr (code == 1) {
-		*rd = cpu.cpu_read32(align(address, 4));
+		UNALIGNED_LOAD_ROR(4);
 	}
 }
 

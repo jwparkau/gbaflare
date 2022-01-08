@@ -229,7 +229,15 @@ void arm_alu(u32 op)
 		}
 	}
 
-	u32 rn = *cpu.get_reg(op >> 16 & BITMASK(4));
+	u32 rni = op >> 16 & BITMASK(4);
+	u32 rn = *cpu.get_reg(rni);
+
+	if constexpr (is_imm == 0 && shift_by_reg == 1) {
+		if (rni == 15) {
+			rn += 4;
+		}
+	}
+
 	u32 rdi = op >> 12 & BITMASK(4);
 	u32 *rd = cpu.get_reg(rdi);
 	u32 spsr = *cpu.get_spsr();
@@ -274,18 +282,18 @@ void arm_alu(u32 op)
 		V = (rn ^ operand) & (operand ^ r) & 0x8000'0000;
 	} else if constexpr (aluop == OP_TST) {
 		u32 r = rn & operand;
-		NZ_FLAGS_RD;
+		TEST_STYLE;
 	} else if constexpr (aluop == OP_TEQ) {
 		u32 r = rn ^ operand;
-		NZ_FLAGS_RD;
+		TEST_STYLE;
 	} else if constexpr (aluop == OP_CMP) {
 		u32 r = rn - operand;
-		NZ_FLAGS_RD;
+		TEST_STYLE;
 		CV_FLAGS_SUB;
 	} else if constexpr (aluop == OP_CMN) {
 		u64 result = (u64)rn + operand;
 		u32 r = result;
-		NZ_FLAGS_RD;
+		TEST_STYLE;
 		CV_FLAGS_ADD;
 	} else if constexpr (aluop == OP_ORR) {
 		u32 r = *rd = rn | operand;
@@ -302,7 +310,7 @@ void arm_alu(u32 op)
 	}
 
 	if constexpr (set_cond) {
-		if (copy_spsr) {
+		if (copy_spsr && cpu.has_spsr()) {
 			cpu.CPSR = spsr;
 			cpu.update_mode();
 		} else {
@@ -386,7 +394,7 @@ void arm_psr(u32 op)
 u32 mask = 0;\
 for (int i = 0; i < 4; i++) {\
 	if (field_mask & BIT(i)) {\
-		mask |= BITMASK(8) << i * 8;\
+		mask |= BITMASK(8) << (i * 8);\
 	}\
 }
 
@@ -421,6 +429,7 @@ void arm_msr_imm(u32 op)
 
 	u32 operand = ror(imm, rotate_imm * 2, carry);
 	cpu.set_flag(CARRY_FLAG, carry);
+
 	MSR_STYLE;
 }
 
