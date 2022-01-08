@@ -440,7 +440,9 @@ void arm_sdt(u32 op)
 
 	int rdi = op >> 12 & BITMASK(4);
 	u32 *rd = cpu.get_reg(rdi);
-	u32 *rn = cpu.get_reg(op >> 16 & BITMASK(4));
+	int rni = op >> 16 & BITMASK(4);
+	u32 *rn = cpu.get_reg(rni);
+	u32 old_rn = *rn;
 
 #define ADDRESS_WRITE \
 if constexpr (prepost == 1) {\
@@ -493,9 +495,15 @@ if constexpr (prepost == 1) {\
 	} else if constexpr (load == 1 && byteword == 1) {
 		*rd = cpu.cpu_read8(address);
 	} else if constexpr (load == 0 && byteword == 0) {
-		cpu.cpu_write32(align(address, 4), *rd);
+		u32 value;
+		if (rdi == rni) {
+			value = old_rn;
+		} else {
+			value = *rd;
+		}
+		cpu.cpu_write32(align(address, 4), value + (rdi == 15 ? 4 : 0));
 	} else if constexpr (load == 0 && byteword == 1) {
-		cpu.cpu_write8(address, *rd & BITMASK(8));
+		cpu.cpu_write8(address, (*rd + (rdi == 15 ? 4 : 0)) & BITMASK(8));
 	}
 }
 
