@@ -310,7 +310,7 @@ void arm_alu(u32 op)
 	}
 
 	if constexpr (set_cond) {
-		if (copy_spsr && cpu.has_spsr()) {
+		if (copy_spsr) {
 			cpu.CPSR = spsr;
 			cpu.update_mode();
 		} else {

@@ -275,6 +275,9 @@ u32 *Cpu::get_reg(int i)
 
 u32 *Cpu::get_spsr()
 {
+	if (cpu_mode % 6 == 0) {
+		return &CPSR;
+	}
 	return &SPSR[cpu_mode % 6];
 }
 
