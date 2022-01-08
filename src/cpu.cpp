@@ -9,12 +9,10 @@
 struct Cpu cpu;
 bool debug = false;
 
-#define OP_BUFFER_SIZE 1000
+#define OP_BUFFER_SIZE 10
 u32 opbuffer[OP_BUFFER_SIZE];
 u32 pcbuffer[OP_BUFFER_SIZE];
 int opi;
-
-bool f = false;
 
 void dump_buffer()
 {
@@ -63,6 +61,7 @@ void Cpu::step()
 	pcbuffer[opi] = pc - (in_thumb_state() ? 4 : 8);
 
 	opi = (opi + 1) % OP_BUFFER_SIZE;
+
 	execute();
 	fetch();
 }
@@ -98,23 +97,10 @@ void Cpu::thumb_fetch()
 
 void Cpu::execute()
 {
-	if (cpu.pc - 8 == 0x8000CD4) {
-		//f = true;
-	}
-	if (f) {
-		dump_registers();
-		fprintf(stderr, " %08X\n", pipeline[0]);
-	}
-
 	if (in_thumb_state()) {
 		thumb_execute();
 	} else {
 		arm_execute();
-	}
-
-	if (f) {
-		dump_registers();
-		fprintf(stderr, " -----END\n");
 	}
 }
 

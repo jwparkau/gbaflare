@@ -66,6 +66,9 @@ for (int i = 0; i <= (x); i++) {\
 		cpu.cpu_write32(address, (target));\
 		address += 4;\
 	}\
+}\
+if (register_list == 0) {\
+	cpu.cpu_write32(address, cpu.pc + 4);\
 }
 
 #define __READ_MULTIPLE(x, target) \
@@ -74,6 +77,9 @@ for (int i = 0; i <= (x); i++) {\
 		(target) = cpu.cpu_read32(address);\
 		address += 4;\
 	}\
+}\
+if (register_list == 0) {\
+	WRITE_PC(cpu.cpu_read32(address) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
 }
 
 #define READ_MULTIPLE(x) \
