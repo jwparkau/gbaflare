@@ -273,7 +273,7 @@ void thumb_alu(u16 op)
 	} else if constexpr (aluop == 6) {
 		s64 result = (s64)rn - operand - (!C);
 		r = *rd = result;
-		C = result < 0;
+		C = !(result < 0);
 		V = (rn ^ operand) & (rn ^ r) & 0x8000'0000;
 	} else if constexpr (aluop == 7) {
 		r = *rd = ror(rn, operand & 0xFF, C);

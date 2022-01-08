@@ -488,8 +488,6 @@ if constexpr (prepost == 1) {\
 	} else if constexpr (load == 0 && byteword == 1) {
 		cpu.cpu_write8(address, *rd & BITMASK(8));
 	}
-
-	cpu.set_flag(CARRY_FLAG, carry);
 }
 
 template <u32 byteword>
@@ -515,7 +513,7 @@ void arm_swp(u32 op)
 		*rd = temp;
 	}
 
-	cpu.set_flag(CARRY_FLAG, carry);
+	//cpu.set_flag(CARRY_FLAG, carry);
 }
 
 template <u32 prepost, u32 updown, u32 imm_offset, u32 writeback, u32 load, u32 sign, u32 half>
@@ -553,7 +551,9 @@ void arm_block_dt(u32 op)
 {
 	u32 start_address;
 
-	u32 *rn = cpu.get_reg(op >> 16 & BITMASK(4));
+	u32 rni = op >> 16 & BITMASK(4);
+	u32 *rn = cpu.get_reg(rni);
+	u32 old_rn = *rn;
 	u32 register_list = op & BITMASK(16);
 	u32 k = std::popcount(register_list) * 4;
 
@@ -607,7 +607,12 @@ void arm_block_dt(u32 op)
 
 		if (register_list & BIT(15)) {
 			cpu.cpu_write32(address, cpu.pc);
-			address += 4;
+		}
+	}
+
+	if constexpr (load == 0 && writeback == 1) {
+		if ((register_list & BITMASK(rni + 1)) == BIT(rni)) {
+			cpu.cpu_write32(start_address, old_rn);
 		}
 	}
 }
