@@ -137,8 +137,7 @@ void thumb_branch_cond(u16 op)
 	s8 imm = op & BITMASK(8);
 
 	if (cpu.cond_triggered(cond)) {
-		cpu.pc = cpu.pc + (s32)imm * 2;
-		cpu.flush_pipeline();
+		WRITE_PC(cpu.pc + (s32)imm * 2);
 	}
 }
 
@@ -507,10 +506,19 @@ template <u32 code>
 void thumb_multiple(u16 op)
 {
 	u32 register_list = op & BITMASK(8);
-	u32 *rn = cpu.get_reg(op >> 8 & BITMASK(3));
+	u32 rni = op >> 8 & BITMASK(3);
+	u32 *rn = cpu.get_reg(rni);
+	u32 old_rn = *rn;
 
 	u32 k = 4 * std::popcount(register_list);
-	u32 address = align(*rn, 4);
+	u32 start_address = align(*rn, 4);
+	u32 address = start_address;
+
+	if (register_list == 0) {
+		k = 0x40;
+	}
+
+	*rn = *rn + k;
 
 	if constexpr (code == 0) {
 		WRITE_MULTIPLE(7);
@@ -518,7 +526,16 @@ void thumb_multiple(u16 op)
 		READ_MULTIPLE(7);
 	}
 
-	*rn = *rn + k;
+	if constexpr (code == 0) {
+		if ((register_list & BITMASK(rni + 1)) == BIT(rni)) {
+			cpu.cpu_write32(start_address, old_rn);
+		}
+	} else {
+		if (register_list & BIT(rni)) {
+			*rn = old_rn;
+		}
+	}
+
 }
 
 void thumb_swi(u16 op)

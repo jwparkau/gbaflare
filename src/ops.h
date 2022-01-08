@@ -68,7 +68,7 @@ for (int i = 0; i <= (x); i++) {\
 	}\
 }\
 if (register_list == 0) {\
-	cpu.cpu_write32(address, cpu.pc + 4);\
+	cpu.cpu_write32(address, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
 }
 
 #define __READ_MULTIPLE(x, target) \
