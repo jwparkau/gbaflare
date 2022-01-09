@@ -54,12 +54,9 @@ void Cpu::fakeboot()
 	registers[0][1] = 0xEA;
 	pc = CARTRIDGE_START;
 	CPSR = 0x6000'001F;
-	registers[0][13] = 0x03007F00;
-	registers[1][13] = 0x03007F00;
-	registers[2][13] = 0x03007F00;
-	registers[3][13] = 0x03007F00;
-	registers[4][13] = 0x03007F00;
-	registers[5][13] = 0x03007F00;
+	for (int i = 0; i < NUM_MODES; i++) {
+		registers[i][13] = 0x03007F00;
+	}
 }
 
 void Cpu::flush_pipeline()
@@ -182,8 +179,8 @@ void Cpu::arm_execute()
 
 void Cpu::switch_mode(cpu_mode_t new_mode)
 {
-	int src = cpu_mode % 6;
-	int dst = new_mode % 6;
+	int src = cpu_mode;
+	int dst = new_mode;
 
 	cpu_mode = new_mode;
 
@@ -246,25 +243,25 @@ u32 *Cpu::get_reg(int i)
 	if (i == 15) {
 		return &pc;
 	}
-	return &registers[cpu_mode % 6][i % 16];
+	return &registers[cpu_mode][i];
 }
 
 u32 *Cpu::get_spsr()
 {
-	if (cpu_mode % 6 == 0) {
+	if (cpu_mode % NUM_MODES == 0) {
 		return &CPSR;
 	}
-	return &SPSR[cpu_mode % 6];
+	return &SPSR[cpu_mode % NUM_MODES];
 }
 
 u32 *Cpu::get_sp()
 {
-	return &registers[cpu_mode % 6][13];
+	return &registers[cpu_mode % NUM_MODES][13];
 }
 
 u32 *Cpu::get_lr()
 {
-	return &registers[cpu_mode % 6][14];
+	return &registers[cpu_mode % NUM_MODES][14];
 }
 
 void Cpu::set_flag(u32 flag, bool x)
@@ -325,7 +322,7 @@ void Cpu::dump_registers()
 {
 
 	for (int i = 0; i < 15; i++) {
-		fprintf(stderr, "%08X ", registers[cpu_mode % 6][i]);
+		fprintf(stderr, "%08X ", registers[cpu_mode % NUM_MODES][i]);
 	}
 
 	if (in_thumb_state()) {

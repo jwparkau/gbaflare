@@ -14,6 +14,8 @@ enum cpu_mode_t {
 	USER
 };
 
+#define NUM_MODES 7
+
 enum cpsr_flags {
 	T_STATE = BIT(5),
 	FIQ_DISABLE = BIT(6),
@@ -41,9 +43,9 @@ enum exception_vectors {
 
 struct Cpu {
 	// registers
-	u32 registers[6][16]{};
+	u32 registers[NUM_MODES][16]{};
 	u32 CPSR{};
-	u32 SPSR[6]{};
+	u32 SPSR[NUM_MODES]{};
 	u32 pc{};
 
 	u32 cycles{};
