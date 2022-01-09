@@ -73,10 +73,12 @@ void Cpu::step()
 	 * tick other hw
 	 */
 
+#ifdef DEBUG
 	opbuffer[opi] = pipeline[0];
 	pcbuffer[opi] = pc - (in_thumb_state() ? 4 : 8);
 
 	opi = (opi + 1) % OP_BUFFER_SIZE;
+#endif
 
 	execute();
 	fetch();
@@ -123,10 +125,12 @@ void Cpu::execute()
 void Cpu::thumb_execute()
 {
 	const u16 op = pipeline[0];
+#ifdef DEBUG
 	if (debug) {
 		dump_registers();
 		fprintf(stderr, "     %04X\n", op);
 	}
+#endif
 
 	const u32 lut_offset = op >> 6;
 	ThumbInstruction *fp = thumb_lut[lut_offset];
@@ -151,10 +155,12 @@ bool Cpu::cond_triggered(u32 cond)
 void Cpu::arm_execute()
 {
 	const u32 op = pipeline[0];
+#ifdef DEBUG
 	if (debug) {
 		dump_registers();
 		fprintf(stderr, " %08X\n", op);
 	}
+#endif
 
 	const u32 op1 = op >> 20 & BITMASK(8);
 	const u32 op2 = op >> 4 & BITMASK(4);
@@ -248,20 +254,20 @@ u32 *Cpu::get_reg(int i)
 
 u32 *Cpu::get_spsr()
 {
-	if (cpu_mode % NUM_MODES == 0) {
+	if (cpu_mode == USER || cpu_mode == SYSTEM) {
 		return &CPSR;
 	}
-	return &SPSR[cpu_mode % NUM_MODES];
+	return &SPSR[cpu_mode];
 }
 
 u32 *Cpu::get_sp()
 {
-	return &registers[cpu_mode % NUM_MODES][13];
+	return &registers[cpu_mode][13];
 }
 
 u32 *Cpu::get_lr()
 {
-	return &registers[cpu_mode % NUM_MODES][14];
+	return &registers[cpu_mode][14];
 }
 
 void Cpu::set_flag(u32 flag, bool x)
