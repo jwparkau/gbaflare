@@ -14,6 +14,25 @@ u32 opbuffer[OP_BUFFER_SIZE];
 u32 pcbuffer[OP_BUFFER_SIZE];
 int opi;
 
+static const bool cond_lut[16][16] = {
+	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
+	{1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
+	{0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1},
+	{1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},
+	{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
+	{1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+	{0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
+	{1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1},
+	{1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1},
+	{0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0},
+	{1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0},
+	{0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1},
+	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+};
+
 void dump_buffer()
 {
 	for (int i = opi-1; i >= 0; i--) {
@@ -114,6 +133,8 @@ void Cpu::thumb_execute()
 
 	const u32 lut_offset = op >> 6;
 	ThumbInstruction *fp = thumb_lut[lut_offset];
+	fp(op);
+#ifdef DEBUG
 	if (fp) {
 		fp(op);
 	} else {
@@ -121,47 +142,13 @@ void Cpu::thumb_execute()
 		dump_buffer();
 		throw std::runtime_error("unhandled opcode in thumb mode");
 	}
+#endif
 }
+
 
 bool Cpu::cond_triggered(u32 cond)
 {
-	const bool N = CPSR & SIGN_FLAG;
-	const bool Z = CPSR & ZERO_FLAG;
-	const bool C = CPSR & CARRY_FLAG;
-	const bool V = CPSR & OVERFLOW_FLAG;
-
-	switch (cond) {
-		case 0:
-			return Z;
-		case 1:
-			return !Z;
-		case 2:
-			return C;
-		case 3:
-			return !C;
-		case 4:
-			return N;
-		case 5:
-			return !N;
-		case 6:
-			return V;
-		case 7:
-			return !V;
-		case 8:
-			return C && !Z;
-		case 9:
-			return !(C && !Z);
-		case 0xA:
-			return N == V;
-		case 0xB:
-			return !(N == V);
-		case 0xC:
-			return (!Z && N == V);
-		case 0xD:
-			return !(!Z && N == V);
-		default:
-			return true;
-	}
+	return cond_lut[cond][CPSR >> 28];
 }
 
 void Cpu::arm_execute()
@@ -180,6 +167,8 @@ void Cpu::arm_execute()
 	if (cond_triggered(cond)) {
 		const u32 lut_offset = (op1 << 4) + op2;
 		ArmInstruction *fp = arm_lut[lut_offset];
+		fp(op);
+#ifdef DEBUG
 		if (fp) {
 			fp(op);
 		} else {
@@ -187,6 +176,7 @@ void Cpu::arm_execute()
 			dump_buffer();
 			throw std::runtime_error("unhandled opcode");
 		}
+#endif
 	}
 }
 
