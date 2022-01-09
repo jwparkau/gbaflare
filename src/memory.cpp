@@ -12,6 +12,18 @@ u8 vram_data[VRAM_SIZE];
 u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
 
+static u8 *const region_to_data[9] = {
+	bios_data,
+	ewram_data,
+	iwram_data,
+	io_data,
+	palette_data,
+	vram_data,
+	oam_data,
+	cartridge_data,
+	nullptr
+};
+
 template<typename T> static T read(addr_t addr);
 template<typename T> static void write(addr_t addr, T data);
 
@@ -123,6 +135,13 @@ static T read(addr_t addr)
 
 	u8 *arr = nullptr;
 
+	arr = region_to_data[region];
+
+	if (!arr) {
+		return BITMASK(sizeof(T));
+	}
+
+	/*
 	switch (region) {
 		case MemoryRegion::BIOS:
 			arr = bios_data;
@@ -151,6 +170,7 @@ static T read(addr_t addr)
 		default:
 			return BITMASK(sizeof(T));
 	}
+	*/
 
 	return readarr<T>(arr, offset);
 }
@@ -162,8 +182,13 @@ static void write(addr_t addr, T data)
 
 	std::size_t offset = resolve_memory_address(addr, region);
 
-	u8 *arr = nullptr;
+	u8 *arr = region_to_data[region];
 
+	if (!arr) {
+		return;
+	}
+
+	/*
 	switch (region) {
 		case MemoryRegion::BIOS:
 			return;
@@ -191,6 +216,7 @@ static void write(addr_t addr, T data)
 		default:
 			return;
 	}
+	*/
 
 	writearr<T>(arr, offset, data);
 }

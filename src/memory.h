@@ -36,7 +36,7 @@ enum io_registers {
 	IO_KEYINPUT	= 0x0400'0130
 };
 
-enum class MemoryRegion {
+enum MemoryRegion {
 	BIOS,
 	EWRAM,
 	IWRAM,
