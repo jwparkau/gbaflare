@@ -666,12 +666,16 @@ void arm_block_dt(u32 op)
 
 void arm_swi(u32 op)
 {
+	(void)op;
+
 	EXCEPTION_PROLOGUE(SUPERVISOR, 0x13);
 	WRITE_PC(VECTOR_SWI);
 }
 
 void arm_bkpt(u32 op)
 {
+	(void)op;
+
 	EXCEPTION_PROLOGUE(ABORT, 0x17);
 	WRITE_PC(VECTOR_PREFETCH_ABORT);
 }

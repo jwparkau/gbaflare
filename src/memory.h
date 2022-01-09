@@ -30,6 +30,12 @@ constexpr addr_t VRAM_END = VRAM_START + VRAM_SIZE;
 constexpr addr_t OAM_END = OAM_START + OAM_SIZE;
 constexpr addr_t CARTRIDGE_END = CARTRIDGE_START + CARTRIDGE_SIZE;
 
+enum io_registers {
+	IO_DISPCNT	= 0x0400'0000,
+	IO_DISPSTAT	= 0x0400'0004,
+	IO_KEYINPUT	= 0x0400'0130
+};
+
 enum class MemoryRegion {
 	BIOS,
 	EWRAM,
@@ -51,10 +57,12 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 
-MemoryRegion get_memory_region(addr_t addr, addr_t &base_addr);
+addr_t resolve_memory_address(addr_t addr, MemoryRegion &region);
 
 void load_bios_rom(const char *filename);
 void load_cartridge_rom(const char *filename);
+
+void set_initial_memory_state();
 
 namespace Memory {
 	u32 read32(addr_t addr);

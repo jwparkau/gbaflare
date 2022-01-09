@@ -12,6 +12,9 @@ u8 vram_data[VRAM_SIZE];
 u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
 
+template<typename T> static T read(addr_t addr);
+template<typename T> static void write(addr_t addr, T data);
+
 
 void load_cartridge_rom(const char *filename)
 {
@@ -41,48 +44,82 @@ void load_bios_rom(const char *filename)
 	fprintf(stderr, "bios rom: read %ld bytes\n", bytes_read);
 }
 
+void set_initial_memory_state()
+{
+	write<u16>(IO_KEYINPUT, 0xFFFF);
+}
+
 /*
  * Use a software cache later to make things faster
  */
-MemoryRegion get_memory_region(addr_t addr, addr_t &base_addr)
+addr_t resolve_memory_address(addr_t addr, MemoryRegion &region)
 {
-	MemoryRegion region;
-	if (BIOS_START <= addr && addr < BIOS_END) {
-		base_addr = BIOS_START;
-		region = MemoryRegion::BIOS;
-	} else if (EWRAM_START <= addr && addr < EWRAM_END) {
-		base_addr = EWRAM_START;
-		region = MemoryRegion::EWRAM;
-	} else if (IWRAM_START <= addr && addr < IWRAM_END) {
-		base_addr = IWRAM_START;
-		region = MemoryRegion::IWRAM;
-	} else if (IO_START <= addr && addr < IO_END) {
-		base_addr = IO_START;
-		region = MemoryRegion::IO;
-	} else if (PALETTE_RAM_START <= addr && addr < PALETTE_RAM_END) {
-		base_addr = PALETTE_RAM_START;
-		region = MemoryRegion::PALETTE_RAM;
-	} else if (VRAM_START <= addr && addr < VRAM_END) {
-		base_addr = VRAM_START;
-		region = MemoryRegion::VRAM;
-	} else if (OAM_START <= addr && addr < OAM_END) {
-		base_addr = OAM_START;
-		region = MemoryRegion::OAM;
-	} else if (CARTRIDGE_START <= addr && addr < CARTRIDGE_END) {
-		base_addr = CARTRIDGE_START;
-		region = MemoryRegion::CARTRIDGE;
-	} else {
-		region = MemoryRegion::UNUSED;
+	addr_t offset = 0;
+	addr_t l1 = addr >> 24;
+
+	region = MemoryRegion::UNUSED;
+
+	switch (l1) {
+		case 0x00:
+			if (addr < BIOS_END) {
+				region = MemoryRegion::BIOS;
+				offset = addr;
+			}
+			break;
+		case 0x02:
+			region = MemoryRegion::EWRAM;
+			offset = addr % EWRAM_SIZE;
+			break;
+		case 0x03:
+			region = MemoryRegion::IWRAM;
+			offset = addr % IWRAM_SIZE;
+			break;
+		case 0x04:
+			if (addr < IO_END) {
+				region = MemoryRegion::IO;
+				offset = addr & BITMASK(24);
+			} else if ((addr & 0xFFFF) == 0x0800) {
+				region = MemoryRegion::IO;
+				offset = 0x0800;
+			}
+			break;
+		case 0x05:
+			region = MemoryRegion::PALETTE_RAM;
+			offset = addr % PALETTE_RAM_SIZE;
+			break;
+		case 0x06:
+			region = MemoryRegion::VRAM;
+			offset = addr % (VRAM_SIZE + 32_KiB);
+			if (offset >= VRAM_SIZE) {
+				offset -= 32_KiB;
+			}
+			break;
+		case 0x07:
+			region = MemoryRegion::OAM;
+			offset = addr % OAM_SIZE;
+			break;
+		case 0x08:
+		case 0x09:
+		case 0x0A:
+		case 0x0B:
+		case 0x0C:
+		case 0x0D:
+			region = MemoryRegion::CARTRIDGE;
+			offset = addr % CARTRIDGE_SIZE;
+			break;
+		default:
+			region = MemoryRegion::UNUSED;
 	}
 
-	return region;
+	return offset;
 }
 
 template<typename T>
-static u32 read(addr_t addr)
+static T read(addr_t addr)
 {
-	addr_t base_addr = 0;
-	MemoryRegion region = get_memory_region(addr, base_addr);
+	MemoryRegion region = MemoryRegion::UNUSED;
+
+	std::size_t offset = resolve_memory_address(addr, region);
 
 	u8 *arr = nullptr;
 
@@ -112,10 +149,8 @@ static u32 read(addr_t addr)
 			arr = cartridge_data;
 			break;
 		default:
-			return 0xFFFF'FFFF;
+			return BITMASK(sizeof(T));
 	}
-
-	std::size_t offset = addr - base_addr;
 
 	if constexpr (sizeof(T) == sizeof(u32)) {
 		return readarr32(arr, offset);
@@ -129,8 +164,9 @@ static u32 read(addr_t addr)
 template<typename T>
 static void write(addr_t addr, T data)
 {
-	addr_t base_addr = 0;
-	MemoryRegion region = get_memory_region(addr, base_addr);
+	MemoryRegion region = MemoryRegion::UNUSED;
+
+	std::size_t offset = resolve_memory_address(addr, region);
 
 	u8 *arr = nullptr;
 
@@ -161,8 +197,6 @@ static void write(addr_t addr, T data)
 		default:
 			return;
 	}
-
-	std::size_t offset = addr - base_addr;
 
 	if constexpr (sizeof(T) == sizeof(u32)) {
 		writearr32(arr, offset, data);
