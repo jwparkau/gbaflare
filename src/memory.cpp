@@ -152,13 +152,7 @@ static T read(addr_t addr)
 			return BITMASK(sizeof(T));
 	}
 
-	if constexpr (sizeof(T) == sizeof(u32)) {
-		return readarr32(arr, offset);
-	} else if constexpr (sizeof(T) == sizeof(u16)) {
-		return readarr16(arr, offset);
-	} else {
-		return readarr8(arr, offset);
-	}
+	return readarr<T>(arr, offset);
 }
 
 template<typename T>
@@ -198,13 +192,7 @@ static void write(addr_t addr, T data)
 			return;
 	}
 
-	if constexpr (sizeof(T) == sizeof(u32)) {
-		writearr32(arr, offset, data);
-	} else if constexpr (sizeof(T) == sizeof(u16)) {
-		writearr16(arr, offset, data);
-	} else {
-		writearr8(arr, offset, data);
-	}
+	writearr<T>(arr, offset, data);
 }
 
 u32 Memory::read32(addr_t addr)

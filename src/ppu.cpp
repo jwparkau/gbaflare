@@ -6,7 +6,7 @@ PPU ppu;
 void PPU::copy_framebuffer_mode4()
 {
 	for (int i = 0; i < 240 * 160; i++) {
-		u32 offset = Memory::read8(VRAM_START + i);
-		framebuffer[i] = Memory::read16(offset * 2 + 0x05000000);
+		u8 offset = vram_data[i];
+		framebuffer[i] = readarr<u16>(palette_data, offset * 2);
 	}
 }

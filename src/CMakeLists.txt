@@ -1,4 +1,4 @@
-target_compile_options(gbaflare PUBLIC -Wall -Wextra -O2)
+target_compile_options(gbaflare PUBLIC -Wall -Wextra -Winline -O2)
 
 set_target_properties(gbaflare
     PROPERTIES

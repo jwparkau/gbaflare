@@ -74,5 +74,4 @@ namespace Memory {
 	void write8(addr_t addr, u8 data);
 }
 
-
 #endif

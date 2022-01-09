@@ -2,6 +2,8 @@
 #define GBAFLARE_TYPES_H
 
 #include <cstdint>
+#include <cstring>
+#include <bit>
 
 typedef std::uint8_t u8;
 typedef std::uint16_t u16;
@@ -39,12 +41,59 @@ constexpr u32 BIT(u32 i) {
 	return 1 << i;
 }
 
-u32 readarr32(u8 *arr, std::size_t offset);
-u16 readarr16(u8 *arr, std::size_t offset);
-u8 readarr8(u8 *arr, std::size_t offset);
+template<typename T> inline T readarr(u8 *arr, std::size_t offset)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		T x;
+		memcpy(&x, arr + offset, sizeof(T));
 
-void writearr32(u8 *arr, std::size_t offset, u32 data);
-void writearr16(u8 *arr, std::size_t offset, u16 data);
-void writearr8(u8 *arr, std::size_t offset, u8 data);
+		return x;
+	} else {
+		u8 a0 = arr[offset];
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return a0;
+		}
+
+		u8 a1 = arr[offset+1];
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return (a1 << 8) | a0;
+		}
+
+		u8 a2 = arr[offset+2];
+		u8 a3 = arr[offset+3];
+
+		return (a3 << 24) | (a2 << 16) | (a1 << 8) | a0;
+	}
+}
+
+template<typename T> inline void writearr(u8 *arr, std::size_t offset, T data)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		memcpy(arr + offset, &data, sizeof(T));
+	} else {
+		u32 x = data;
+		u32 mask = BITMASK(8);
+
+		arr[offset] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+1] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+2] = x & mask;
+		x >>= 8;
+		arr[offset+3] = x & mask;
+	}
+}
 
 #endif
