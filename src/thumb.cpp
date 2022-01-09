@@ -147,13 +147,13 @@ void thumb_branch(u16 op)
 	u32 imm = op & BITMASK(11);
 	s32 nn = (s32)(imm << 21) >> 21;
 
-	u32 *lr = cpu.get_lr();
-
 	if constexpr (h == 0) {
 		WRITE_PC(cpu.pc + nn * 2);
 	} else if constexpr (h == 2) {
+		u32 *lr = cpu.get_lr();
 		*lr = cpu.pc + (nn << 12);
 	} else if constexpr (h == 3) {
+		u32 *lr = cpu.get_lr();
 		u32 old_pc = cpu.pc;
 		WRITE_PC(*lr + imm * 2);
 		*lr = (old_pc - 2) | 1;

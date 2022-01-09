@@ -177,9 +177,8 @@ void arm_branch(u32 op)
 	u32 imm = op & BITMASK(24);
 	s32 nn = (s32)(imm << 8) >> 8;
 
-	u32 *lr = cpu.get_lr();
-
 	if constexpr (link) {
+		u32 *lr = cpu.get_lr();
 		*lr = cpu.pc - 4;
 	}
 
@@ -240,7 +239,6 @@ void arm_alu(u32 op)
 
 	u32 rdi = op >> 12 & BITMASK(4);
 	u32 *rd = cpu.get_reg(rdi);
-	u32 spsr = *cpu.get_spsr();
 
 	bool copy_spsr = false;
 	bool pc_written = false;
@@ -311,7 +309,7 @@ void arm_alu(u32 op)
 
 	if constexpr (set_cond) {
 		if (copy_spsr) {
-			cpu.CPSR = spsr;
+			cpu.CPSR = *cpu.get_spsr();
 			cpu.update_mode();
 		} else {
 			WRITE_CPU_FLAGS;
