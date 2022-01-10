@@ -13,12 +13,12 @@ void PPU::step()
 {
 	switch (ppu_mode) {
 		case PPU_IN_DRAW:
-			if (cycles == 960) {
+			if (cycles >= 960) {
 				ppu_mode = PPU_IN_HBLANK;
 			}
 			break;
 		case PPU_IN_HBLANK:
-			if (cycles == 0) {
+			if (cycles < 960 || cycles >= 1232) {
 				if (LY() == 160) {
 					ppu_mode = PPU_IN_VBLANK;
 					on_vblank();
@@ -32,7 +32,7 @@ void PPU::step()
 			}
 			break;
 		case PPU_IN_VBLANK:
-			if (cycles == 0) {
+			if (cycles == 0 || cycles >= 1232) {
 				if (LY() == 227) {
 					DISPSTAT() &= ~LCD_VBLANK;
 				}
@@ -43,14 +43,14 @@ void PPU::step()
 			break;
 	}
 
-	if (cycles == 960) {
+	if (cycles >= 960) {
 		if (DISPSTAT() & LCD_HBLANK_IRQ) {
 			request_interrupt(IRQ_HBLANK);
 		}
 		DISPSTAT() |= LCD_HBLANK;
 	}
 
-	if (cycles == 0) {
+	if (cycles == 0 || cycles >= 1232) {
 		DISPSTAT() &= ~LCD_HBLANK;
 	}
 

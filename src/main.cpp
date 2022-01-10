@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 
 	u16 joypad_state = 0xFFFF;
 
+	u32 input_counter = 0;
 	u32 t = 0;
 	for (;;) {
 		if (!emulator_running) {
@@ -49,14 +50,16 @@ int main(int argc, char **argv)
 
 		cpu.step();
 		ppu.step();
-		t += 1;
+		t++;
+		input_counter++;
 
-		if (t == 197120) {
+		if (input_counter == 100000) {
 			platform.handle_input(joypad_state);
 			io_write<u16>(IO_KEYINPUT, joypad_state);
+			input_counter = 0;
 		}
 
-		if (t == 280896) {
+		if (t >= 280896) {
 			t = 0;
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
 			//printf("took %f ms\n", 1000.0 * ticks / freq);
