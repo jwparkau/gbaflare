@@ -2,6 +2,8 @@
 #include "memory.h"
 #include "platform.h"
 
+#include <cstring>
+
 PPU ppu;
 
 void PPU::step()
@@ -17,6 +19,9 @@ void PPU::step()
 				if (LY() == 160) {
 					ppu_mode = PPU_IN_VBLANK;
 					on_vblank();
+					if (DISPSTAT() & LCD_VBLANK_IRQ) {
+						request_interrupt(IRQ_VBLANK);
+					}
 					DISPSTAT() |= LCD_VBLANK;
 				} else {
 					ppu_mode = PPU_IN_DRAW;
@@ -36,6 +41,9 @@ void PPU::step()
 	}
 
 	if (cycles == 960) {
+		if (DISPSTAT() & LCD_HBLANK_IRQ) {
+			request_interrupt(IRQ_HBLANK);
+		}
 		DISPSTAT() |= LCD_HBLANK;
 	}
 
@@ -53,6 +61,9 @@ void PPU::step()
 		}
 
 		if (LY() == LYC()) {
+			if (DISPSTAT() & LCD_VCOUNTER_IRQ) {
+				request_interrupt(IRQ_VCOUNTER);
+			}
 			DISPSTAT() |= LCD_VCOUNTER;
 		} else {
 			DISPSTAT() &= ~LCD_VCOUNTER;
@@ -65,18 +76,27 @@ void PPU::on_vblank()
 	const u8 bg_mode = io_read<u8>(IO_DISPCNT) & LCD_BGMODE;
 
 	switch (bg_mode) {
+		case 3:
+			copy_framebuffer_mode3();
+			break;
 		case 4:
 		default:
 			copy_framebuffer_mode4();
-			platform.render(framebuffer);
 			break;
 	}
 
+	platform.render(framebuffer);
+
+}
+
+void PPU::copy_framebuffer_mode3()
+{
+	memcpy(framebuffer, vram_data, LCD_WIDTH * LCD_HEIGHT * 2);
 }
 
 void PPU::copy_framebuffer_mode4()
 {
-	for (int i = 0; i < 240 * 160; i++) {
+	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
 		u8 offset = vram_data[i];
 		framebuffer[i] = readarr<u16>(palette_data, offset * 2);
 	}

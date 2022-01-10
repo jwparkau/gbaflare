@@ -21,12 +21,12 @@ enum io_dispcnt_flags {
 };
 
 enum io_dispstat_flags {
-	LCD_VBLANK	= 0x1,
-	LCD_HBLANK	= 0x2,
-	LCD_VCOUNTER	= 0x4,
-	LCD_VBLANK_IRQ	= 0x8,
-	LCD_HBLANK_IRQ	= 0x10,
-	LCD_VOUNTER_IRQ	= 0x20
+	LCD_VBLANK	 = 0x1,
+	LCD_HBLANK	 = 0x2,
+	LCD_VCOUNTER	 = 0x4,
+	LCD_VBLANK_IRQ	 = 0x8,
+	LCD_HBLANK_IRQ	 = 0x10,
+	LCD_VCOUNTER_IRQ = 0x20
 };
 
 enum ppu_modes {
@@ -39,14 +39,19 @@ enum ppu_modes {
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
 
+constexpr u32 LCD_WIDTH = 240;
+constexpr u32 LCD_HEIGHT = 160;
+constexpr u32 FRAMEBUFFER_SIZE = LCD_WIDTH * LCD_HEIGHT;
+
 struct PPU {
-	u16 framebuffer[240 * 160];
+	u16 framebuffer[FRAMEBUFFER_SIZE];
 	u32 cycles{};
 	ppu_modes ppu_mode = PPU_IN_DRAW;
 
 	void step();
 
 	void on_vblank();
+	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 };
 

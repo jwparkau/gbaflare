@@ -28,6 +28,12 @@ template<typename T> static T read(addr_t addr);
 template<typename T> static void write(addr_t addr, T data);
 template<typename T> static void mmio_write(addr_t addr, T data);
 
+void request_interrupt(io_request_flags flag)
+{
+	u16 inter_flag = io_read<u16>(IO_IF);
+	inter_flag |= flag;
+	io_write<u16>(IO_IF, inter_flag);
+}
 
 void load_cartridge_rom(const char *filename)
 {

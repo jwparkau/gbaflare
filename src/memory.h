@@ -35,6 +35,7 @@ enum io_registers {
 	IO_DISPSTAT	= 0x0400'0004,
 	IO_VCOUNT	= 0x0400'0006,
 	IO_KEYINPUT	= 0x0400'0130,
+	IO_KEYCNT	= 0x0400'0132,
 	IO_IE		= 0x0400'0200,
 	IO_IF		= 0x0400'0202,
 	IO_IME		= 0x0400'0208,
@@ -78,6 +79,8 @@ extern u8 palette_data[PALETTE_RAM_SIZE];
 extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
+
+void request_interrupt(io_request_flags flag);
 
 addr_t resolve_memory_address(addr_t addr, MemoryRegion &region);
 

@@ -15,9 +15,9 @@ struct Platform {
 	SDL_Renderer *renderer{};
 	SDL_Texture *texture{};
 
-	int width = 240;
-	int height = 160;
-	int scale_factor = 8;
+	const int width = 240;
+	const int height = 160;
+	const int scale_factor = 8;
 
 	int init();
 
