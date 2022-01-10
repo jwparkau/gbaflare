@@ -6,10 +6,10 @@
 #include <stdexcept>
 #include <bit>
 
-constexpr static arm_lut_t init_lut();
-constexpr static ArmInstruction *decode_op(u32 op);
-constexpr static bool is_alu_op(u32 op);
-constexpr static bool is_mul_op(u32 op);
+constexpr static arm_lut_t arm_init_lut();
+constexpr static ArmInstruction *arm_decode_op(u32 op);
+constexpr static bool arm_is_alu_op(u32 op);
+constexpr static bool arm_is_mul_op(u32 op);
 template <u32 link> void arm_branch(u32 op);
 void arm_bx(u32 op);
 template <u32 is_imm, u32 aluop, u32 set_cond, u32 shift_type, u32 shift_by_reg> void arm_alu(u32 op);
@@ -23,7 +23,20 @@ template <u32 byteword> void arm_swp(u32 op);
 void arm_swi(u32 op);
 void arm_bkpt(u32 op);
 
-constexpr static bool is_alu_op(u32 op)
+constexpr static arm_lut_t arm_init_lut()
+{
+	arm_lut_t ret;
+
+	for (u32 op = 0; op < ARM_LUT_SIZE; op++) {
+		ret[op] = arm_decode_op(op);
+	}
+
+	return ret;
+}
+
+const arm_lut_t arm_lut = arm_init_lut();
+
+constexpr static bool arm_is_alu_op(u32 op)
 {
 	u32 op1 = op >> 4;
 	u32 op2 = op & BITMASK(4);
@@ -49,7 +62,7 @@ constexpr static bool is_alu_op(u32 op)
 	return false;
 }
 
-constexpr static bool is_mul_op(u32 op)
+constexpr static bool arm_is_mul_op(u32 op)
 {
 	u32 op1 = op >> 4;
 	u32 op2 = op & BITMASK(4);
@@ -65,7 +78,7 @@ constexpr static bool is_mul_op(u32 op)
 	return false;
 }
 
-constexpr static ArmInstruction *decode_op(u32 op)
+constexpr static ArmInstruction *arm_decode_op(u32 op)
 {
 	u32 op1 = op >> 4;
 	u32 op2 = op & BITMASK(4);
@@ -93,7 +106,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 	}
 
 	// alu
-	if (is_alu_op(op)) {
+	if (arm_is_alu_op(op)) {
 		u32 is_imm = (bool)(op1 >> 5 & 1);
 		u32 aluop = op1 >> 1 & BITMASK(4);
 		u32 set_cond = (bool)(op1 & 1);
@@ -108,7 +121,7 @@ constexpr static ArmInstruction *decode_op(u32 op)
 	}
 
 	// multiply
-	if (is_mul_op(op)) {
+	if (arm_is_mul_op(op)) {
 		u32 mulop = op1 >> 1 & BITMASK(4);
 		u32 set_cond = (bool)(op1 & 1);
 #include "gencpp/MUL_INSTR.gencpp"
@@ -157,19 +170,6 @@ constexpr static ArmInstruction *decode_op(u32 op)
 
 	return nullptr;
 }
-
-constexpr static arm_lut_t init_lut()
-{
-	arm_lut_t ret;
-
-	for (u32 op = 0; op < ARM_LUT_SIZE; op++) {
-		ret[op] = decode_op(op);
-	}
-
-	return ret;
-}
-
-const arm_lut_t arm_lut = init_lut();
 
 template<u32 link>
 void arm_branch(u32 op)

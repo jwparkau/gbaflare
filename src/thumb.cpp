@@ -5,8 +5,8 @@
 #include <bit>
 #include <iostream>
 
-constexpr static thumb_lut_t init_thumb();
-constexpr static ThumbInstruction *decode_op(u32 op);
+constexpr static thumb_lut_t thumb_init_lut();
+constexpr static ThumbInstruction *thumb_decode_op(u32 op);
 void thumb_branch_cond(u16 op);
 template <u32 h> void thumb_branch(u16 op);
 template <u32 shift_type> void thumb_shift_reg(u16 op);
@@ -26,7 +26,20 @@ template <u32 code, u32 pclr> void thumb_pushpop(u16 op);
 template <u32 code> void thumb_multiple(u16 op);
 void thumb_swi(u16 op);
 
-constexpr static ThumbInstruction *decode_op(u32 op)
+const thumb_lut_t thumb_lut = thumb_init_lut();
+
+constexpr static thumb_lut_t thumb_init_lut()
+{
+	thumb_lut_t ret;
+
+	for (u32 op = 0; op < THUMB_LUT_SIZE; op++) {
+		ret[op] = thumb_decode_op(op);
+	}
+
+	return ret;
+}
+
+constexpr static ThumbInstruction *thumb_decode_op(u32 op)
 {
 	if (op >> 6 == 0xD && (op >> 3 & BITMASK(3)) != 7) {
 		return thumb_branch_cond;
@@ -117,19 +130,6 @@ constexpr static ThumbInstruction *decode_op(u32 op)
 
 	return nullptr;
 }
-
-constexpr static thumb_lut_t init_thumb()
-{
-	thumb_lut_t ret;
-
-	for (u32 op = 0; op < THUMB_LUT_SIZE; op++) {
-		ret[op] = decode_op(op);
-	}
-
-	return ret;
-}
-
-const thumb_lut_t thumb_lut = init_thumb();
 
 void thumb_branch_cond(u16 op)
 {

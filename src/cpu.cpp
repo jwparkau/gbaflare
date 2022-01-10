@@ -14,6 +14,8 @@ u32 opbuffer[OP_BUFFER_SIZE];
 u32 pcbuffer[OP_BUFFER_SIZE];
 int opi;
 
+void dump_buffer();
+
 static const bool cond_lut[16][16] = {
 	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
 	{1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
