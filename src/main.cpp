@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 			t = 0;
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
 			//printf("took %f ms\n", 1000.0 * ticks / freq);
+			printf("fps: %f\n", (double)freq / ticks);
 			tick_start = SDL_GetPerformanceCounter();
 		}
 	}

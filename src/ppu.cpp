@@ -175,7 +175,7 @@ void PPU::render_text_bg(int bg)
 				palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_offset;
 			}
 
-			// dubious
+			// UNSAFE -- at this point bg mode must be 0, 1, 2
 			if (palette_offset != 0 && tile_offset < 0x10000) {
 				framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
 			}
@@ -185,6 +185,7 @@ void PPU::render_text_bg(int bg)
 
 void PPU::do_bg_mode0()
 {
+	// TODO: this wont work with sprites -- fix
 	std::vector<std::pair<int, int>> bgs_to_render;
 	for (int i = 0; i < 4; i++) {
 		if (bg_is_enabled(i)) {
