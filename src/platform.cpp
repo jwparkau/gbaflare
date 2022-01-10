@@ -148,6 +148,10 @@ static joypad_buttons translate_sym(SDL_Keycode sym)
 		case SDLK_2:
 		case SDLK_BACKSPACE:
 			return BUTTON_SELECT;
+		case SDLK_q:
+			return BUTTON_L;
+		case SDLK_e:
+			return BUTTON_R;
 		default:
 			return NOT_MAPPED;
 	}
