@@ -542,6 +542,6 @@ void thumb_swi(u16 op)
 {
 	(void)op;
 
-	EXCEPTION_PROLOGUE(SUPERVISOR, 0x13);
+	cpu.exception_prologue(SUPERVISOR, 0x13);
 	WRITE_PC(VECTOR_SWI);
 }

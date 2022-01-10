@@ -82,6 +82,18 @@ void Cpu::step()
 	opi = (opi + 1) % OP_BUFFER_SIZE;
 #endif
 
+	// TODO: Use a scheduler for interrupts etc
+	if (io_read<u8>(IO_IME) & 1) {
+		u16 inter_enable = io_read<u16>(IO_IE) & BITMASK(14);
+		u16 inter_flag = io_read<u16>(IO_IF) & BITMASK(14);
+
+		if (inter_enable & inter_flag) {
+			exception_prologue(IRQ, 0x12);
+			pc = VECTOR_IRQ;
+			flush_pipeline();
+		}
+	}
+
 	execute();
 	fetch();
 }
@@ -211,6 +223,16 @@ void Cpu::switch_mode(cpu_mode_t new_mode)
 			registers[dst][i] = registers[0][i];
 		}
 	}
+}
+
+void Cpu::exception_prologue(cpu_mode_t mode, u8 flag)
+{
+	registers[mode][14] = pc - 4;
+	SPSR[mode] = CPSR;
+	CPSR = (CPSR & ~BITMASK(5)) | flag;
+	update_mode();
+	set_flag(T_STATE, 0);
+	set_flag(IRQ_DISABLE, 1);
 }
 
 void Cpu::update_mode()

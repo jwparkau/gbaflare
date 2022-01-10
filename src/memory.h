@@ -33,7 +33,37 @@ constexpr addr_t CARTRIDGE_END = CARTRIDGE_START + CARTRIDGE_SIZE;
 enum io_registers {
 	IO_DISPCNT	= 0x0400'0000,
 	IO_DISPSTAT	= 0x0400'0004,
-	IO_KEYINPUT	= 0x0400'0130
+	IO_VCOUNT	= 0x0400'0006,
+	IO_KEYINPUT	= 0x0400'0130,
+	IO_IE		= 0x0400'0200,
+	IO_IF		= 0x0400'0202,
+	IO_IME		= 0x0400'0208,
+};
+
+enum io_request_flags {
+	IRQ_VBLANK	= 0x1,
+	IRQ_HBLANK	= 0x2,
+	IRQ_VCOUNTER	= 0x4,
+	IRQ_TIMER0	= 0x8,
+	IRQ_TIMER1 	= 0x10,
+	IRQ_TIMER2 	= 0x20,
+	IRQ_TIMER3 	= 0x40,
+	IRQ_SERIAL 	= 0x80,
+	IRQ_DMA0	= 0x100,
+	IRQ_DMA1 	= 0x200,
+	IRQ_DMA2 	= 0x400,
+	IRQ_DMA3 	= 0x800,
+	IRQ_KEYPAD	= 0x1000,
+	IRQ_GAMEPAK	= 0x2000
+};
+
+enum io_dispstat_flags {
+	LCD_VBLANK	= 0x1,
+	LCD_HBLANK	= 0x2,
+	LCD_VCOUNTER	= 0x4,
+	LCD_VBLANK_IRQ	= 0x8,
+	LCD_HBLANK_IRQ	= 0x10,
+	LCD_VOUNTER_IRQ	= 0x20
 };
 
 enum MemoryRegion {
@@ -72,6 +102,71 @@ namespace Memory {
 	void write32(addr_t addr, u32 data);
 	void write16(addr_t addr, u16 data);
 	void write8(addr_t addr, u8 data);
+}
+
+template<typename T> inline T readarr(u8 *arr, std::size_t offset)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		T x;
+		memcpy(&x, arr + offset, sizeof(T));
+
+		return x;
+	} else {
+		u8 a0 = arr[offset];
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return a0;
+		}
+
+		u8 a1 = arr[offset+1];
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return (a1 << 8) | a0;
+		}
+
+		u8 a2 = arr[offset+2];
+		u8 a3 = arr[offset+3];
+
+		return (a3 << 24) | (a2 << 16) | (a1 << 8) | a0;
+	}
+}
+
+template<typename T> inline void writearr(u8 *arr, std::size_t offset, T data)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		memcpy(arr + offset, &data, sizeof(T));
+	} else {
+		u32 x = data;
+		u32 mask = BITMASK(8);
+
+		arr[offset] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+1] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+2] = x & mask;
+		x >>= 8;
+		arr[offset+3] = x & mask;
+	}
+}
+
+template<typename T> inline T io_read(addr_t addr)
+{
+	return readarr<T>(io_data, addr - IO_START);
+}
+
+template<typename T> inline void io_write(addr_t addr, T data)
+{
+	writearr<T>(io_data, addr - IO_START, data);
 }
 
 #endif

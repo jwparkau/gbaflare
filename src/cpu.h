@@ -58,6 +58,8 @@ struct Cpu {
 	void flush_pipeline();
 	void switch_mode(cpu_mode_t new_mode);
 	void update_mode();
+	void exception_prologue(cpu_mode_t new_mode, u8 flag);
+
 	void step();
 
 	void fetch();

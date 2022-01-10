@@ -115,13 +115,4 @@ u32 addr = align(address, (x));\
 u32 rem = address & ((x) - 1);\
 *rd = ror(cpu.cpu_read32(addr) & BITMASK((x) * 8), rem * 8, carry_ror);
 
-
-#define EXCEPTION_PROLOGUE(mode, flag) \
-cpu.registers[mode][14] = cpu.pc - 4;\
-cpu.SPSR[mode] = cpu.CPSR;\
-cpu.CPSR = (cpu.CPSR & ~BITMASK(5)) | (flag);\
-cpu.update_mode();\
-cpu.set_flag(T_STATE, 0);\
-cpu.set_flag(IRQ_DISABLE, 1);
-
 #endif

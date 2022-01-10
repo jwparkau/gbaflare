@@ -26,6 +26,7 @@ static u8 *const region_to_data[9] = {
 
 template<typename T> static T read(addr_t addr);
 template<typename T> static void write(addr_t addr, T data);
+template<typename T> static void mmio_write(addr_t addr, T data);
 
 
 void load_cartridge_rom(const char *filename)
@@ -141,37 +142,6 @@ static T read(addr_t addr)
 		return BITMASK(sizeof(T));
 	}
 
-	/*
-	switch (region) {
-		case MemoryRegion::BIOS:
-			arr = bios_data;
-			break;
-		case MemoryRegion::EWRAM:
-			arr = ewram_data;
-			break;
-		case MemoryRegion::IWRAM:
-			arr = iwram_data;
-			break;
-		case MemoryRegion::IO:
-			arr = io_data;
-			break;
-		case MemoryRegion::PALETTE_RAM:
-			arr = palette_data;
-			break;
-		case MemoryRegion::VRAM:
-			arr = vram_data;
-			break;
-		case MemoryRegion::OAM:
-			arr = oam_data;
-			break;
-		case MemoryRegion::CARTRIDGE:
-			arr = cartridge_data;
-			break;
-		default:
-			return BITMASK(sizeof(T));
-	}
-	*/
-
 	return readarr<T>(arr, offset);
 }
 
@@ -188,37 +158,43 @@ static void write(addr_t addr, T data)
 		return;
 	}
 
-	/*
-	switch (region) {
-		case MemoryRegion::BIOS:
-			return;
-		case MemoryRegion::EWRAM:
-			arr = ewram_data;
-			break;
-		case MemoryRegion::IWRAM:
-			arr = iwram_data;
-			break;
-		case MemoryRegion::IO:
-			arr = io_data;
-			break;
-		case MemoryRegion::PALETTE_RAM:
-			arr = palette_data;
-			break;
-		case MemoryRegion::VRAM:
-			arr = vram_data;
-			break;
-		case MemoryRegion::OAM:
-			arr = oam_data;
-			break;
-		case MemoryRegion::CARTRIDGE:
-			arr = cartridge_data;
-			break;
-		default:
-			return;
+	if (region == MemoryRegion::IO) {
+		mmio_write<T>(addr, data);
 	}
-	*/
 
 	writearr<T>(arr, offset, data);
+}
+
+template<typename T>
+static void mmio_write(addr_t addr, T data)
+{
+	u32 x = data;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+
+		u8 mask;
+
+		switch (addr + i) {
+			case IO_KEYINPUT:
+			case IO_KEYINPUT + 1:
+			case IO_VCOUNT:
+				mask = 0;
+				break;
+			case IO_DISPSTAT:
+				mask = 0xF8;
+				break;
+			default:
+				mask = 0xFF;
+		}
+
+		const std::size_t offset = addr + i - IO_START;
+
+		u8 old_value = io_data[offset];
+		u8 new_value = (old_value & ~mask) | (x & mask);
+
+		io_data[offset] = new_value;
+		x >>= 8;
+	}
 }
 
 u32 Memory::read32(addr_t addr)
