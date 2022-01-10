@@ -80,8 +80,10 @@ void PPU::on_vblank()
 			copy_framebuffer_mode3();
 			break;
 		case 4:
-		default:
 			copy_framebuffer_mode4();
+			break;
+		case 5:
+			copy_framebuffer_mode5();
 			break;
 	}
 
@@ -91,7 +93,9 @@ void PPU::on_vblank()
 
 void PPU::copy_framebuffer_mode3()
 {
-	memcpy(framebuffer, vram_data, LCD_WIDTH * LCD_HEIGHT * 2);
+	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
+		framebuffer[i] = readarr<u16>(vram_data, i*2);
+	}
 }
 
 void PPU::copy_framebuffer_mode4()
@@ -105,5 +109,32 @@ void PPU::copy_framebuffer_mode4()
 	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
 		u8 offset = p[i];
 		framebuffer[i] = readarr<u16>(palette_data, offset * 2);
+	}
+}
+
+void PPU::copy_framebuffer_mode5()
+{
+	u8 *p = vram_data;
+
+	if (io_read<u8>(IO_DISPCNT) & LCD_FRAME) {
+		p += 40_KiB;
+	}
+
+	const int w = 160;
+	const int h = 128;
+
+	for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(p, (i*w + j) * 2);
+		}
+		for (int j = w; j < LCD_WIDTH; j++) {
+			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
+		}
+	}
+
+	for (int i = h; i < LCD_HEIGHT; i++) {
+		for (int j = 0; j < LCD_WIDTH; j++) {
+			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
+		}
 	}
 }

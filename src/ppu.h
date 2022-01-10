@@ -39,8 +39,8 @@ enum ppu_modes {
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
 
-constexpr u32 LCD_WIDTH = 240;
-constexpr u32 LCD_HEIGHT = 160;
+#define LCD_WIDTH 240
+#define LCD_HEIGHT 160
 constexpr u32 FRAMEBUFFER_SIZE = LCD_WIDTH * LCD_HEIGHT;
 
 struct PPU {
@@ -53,6 +53,7 @@ struct PPU {
 	void on_vblank();
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
+	void copy_framebuffer_mode5();
 };
 
 extern PPU ppu;
