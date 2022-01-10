@@ -94,7 +94,11 @@ void PPU::on_vblank()
 	}
 
 	platform.render(framebuffer);
+	u16 const backdrop = readarr<u16>(palette_data, 0);
 
+	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
+		framebuffer[i] = backdrop;
+	}
 }
 
 bool PPU::bg_is_enabled(int i)
