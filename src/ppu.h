@@ -29,6 +29,18 @@ enum io_dispstat_flags {
 	LCD_VCOUNTER_IRQ = 0x20
 };
 
+enum io_bgcnt_flags {
+	BG_PRIORITY	= 0x3,
+	BG_MOSAIC	= 0x40,
+	BG_PALETTE	= 0x80,
+};
+
+enum sreen_entry_flags {
+	SE_TILENUMBER 	= BITMASK(10),
+	SE_HFLIP	= BIT(10),
+	SE_VFLIP	= BIT(11)
+};
+
 enum ppu_modes {
 	PPU_IN_DRAW,
 	PPU_IN_HBLANK,
@@ -51,9 +63,12 @@ struct PPU {
 	void step();
 
 	void on_vblank();
+	void do_bg_mode0();
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();
+
+	bool bg_is_enabled(int i);
 };
 
 extern PPU ppu;

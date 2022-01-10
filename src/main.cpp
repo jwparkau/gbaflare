@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 		if (t == 280896) {
 			t = 0;
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
-			printf("took %f ms\n", 1000.0 * ticks / freq);
+			//printf("took %f ms\n", 1000.0 * ticks / freq);
 			tick_start = SDL_GetPerformanceCounter();
 		}
 	}
