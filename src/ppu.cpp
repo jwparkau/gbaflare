@@ -96,8 +96,14 @@ void PPU::copy_framebuffer_mode3()
 
 void PPU::copy_framebuffer_mode4()
 {
+	u8 *p = vram_data;
+
+	if (io_read<u8>(IO_DISPCNT) & LCD_FRAME) {
+		p += 40_KiB;
+	}
+
 	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
-		u8 offset = vram_data[i];
+		u8 offset = p[i];
 		framebuffer[i] = readarr<u16>(palette_data, offset * 2);
 	}
 }
