@@ -64,6 +64,7 @@ struct PPU {
 
 	void on_vblank();
 	void do_bg_mode0();
+	void render_text_bg(int bg);
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();

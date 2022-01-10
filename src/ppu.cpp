@@ -2,7 +2,10 @@
 #include "memory.h"
 #include "platform.h"
 
+#include <utility>
+#include <algorithm>
 #include <cstring>
+#include <vector>
 
 PPU ppu;
 
@@ -99,27 +102,8 @@ bool PPU::bg_is_enabled(int i)
 	return io_read<u8>(IO_DISPCNT + 1) & BIT(i);
 }
 
-void PPU::do_bg_mode0()
+void PPU::render_text_bg(int bg)
 {
-	int bg = -1;
-	// smaller numbers have higher priority (ranges from 0-3)
-	u8 highest_prio = 4;
-
-	for (int i = 0; i < 4; i++) {
-		if (bg_is_enabled(i)) {
-			u8 prio = io_read<u8>(IO_BG0CNT + i*2) & BG_PRIORITY;
-			if (prio < highest_prio) {
-				highest_prio = prio;
-				bg = i;
-			}
-		}
-	}
-
-	if (bg < 0) {
-		fprintf(stderr, "NO BG ENABLED??\n");
-		return;
-	}
-
 	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
 	u8 cbb = bgcnt >> 2 & BITMASK(2);
 	u8 sbb = bgcnt >> 8 & BITMASK(5);
@@ -191,8 +175,31 @@ void PPU::do_bg_mode0()
 				palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_offset;
 			}
 
-			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
+			// dubious
+			if (palette_offset != 0 && tile_offset < 0x10000) {
+				framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
+			}
 		}
+	}
+}
+
+void PPU::do_bg_mode0()
+{
+	std::vector<std::pair<int, int>> bgs_to_render;
+	for (int i = 0; i < 4; i++) {
+		if (bg_is_enabled(i)) {
+			int prio = io_read<u8>(IO_BG0CNT + i*2) & BG_PRIORITY;
+			bgs_to_render.push_back(std::make_pair(prio, -i));
+		}
+	}
+
+	std::sort(bgs_to_render.begin(), bgs_to_render.end());
+	if (bgs_to_render.empty()) {
+		return;
+	}
+
+	for (auto x : bgs_to_render) {
+		render_text_bg(-x.second);
 	}
 }
 
