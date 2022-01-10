@@ -17,5 +17,6 @@ project(
 #endif()
 
 add_executable(gbaflare "")
+add_executable(gbaflare-release "")
 
 add_subdirectory(src)

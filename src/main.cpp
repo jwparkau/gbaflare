@@ -48,22 +48,15 @@ int main(int argc, char **argv)
 		}
 
 		cpu.step();
+		ppu.step();
 		t += 1;
 
 		if (t == 197120) {
 			platform.handle_input(joypad_state);
 			io_write<u16>(IO_KEYINPUT, joypad_state);
-			ppu.copy_framebuffer_mode4();
-			platform.render(ppu.framebuffer);
-			u16 x = io_read<u16>(IO_DISPSTAT);
-			x |= 1;
-			io_write<u16>(IO_DISPSTAT, x);
 		}
 
 		if (t == 280896) {
-			u16 x = io_read<u16>(IO_DISPSTAT);
-			x &= ~BITMASK(1);
-			io_write<u16>(IO_DISPSTAT, x);
 			t = 0;
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
 			printf("took %f ms\n", 1000.0 * ticks / freq);

@@ -57,14 +57,6 @@ enum io_request_flags {
 	IRQ_GAMEPAK	= 0x2000
 };
 
-enum io_dispstat_flags {
-	LCD_VBLANK	= 0x1,
-	LCD_HBLANK	= 0x2,
-	LCD_VCOUNTER	= 0x4,
-	LCD_VBLANK_IRQ	= 0x8,
-	LCD_HBLANK_IRQ	= 0x10,
-	LCD_VOUNTER_IRQ	= 0x20
-};
 
 enum MemoryRegion {
 	BIOS,
