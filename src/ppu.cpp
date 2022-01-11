@@ -15,6 +15,7 @@ void PPU::step()
 		case PPU_IN_DRAW:
 			if (cycles >= 960) {
 				ppu_mode = PPU_IN_HBLANK;
+				draw_scanline();
 			}
 			break;
 		case PPU_IN_HBLANK:
@@ -74,8 +75,16 @@ void PPU::step()
 	}
 }
 
-void PPU::on_vblank()
+void PPU::draw_scanline()
 {
+	u16 const backdrop = readarr<u16>(palette_data, 0);
+
+	const int ly = LY();
+
+	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+		framebuffer[i] = backdrop;
+	}
+
 	const u8 bg_mode = io_read<u8>(IO_DISPCNT) & LCD_BGMODE;
 
 	switch (bg_mode) {
@@ -91,14 +100,14 @@ void PPU::on_vblank()
 		case 5:
 			copy_framebuffer_mode5();
 			break;
+		default:
+			return;
 	}
+}
 
+void PPU::on_vblank()
+{
 	platform.render(framebuffer);
-	u16 const backdrop = readarr<u16>(palette_data, 0);
-
-	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
-		framebuffer[i] = backdrop;
-	}
 }
 
 bool PPU::bg_is_enabled(int i)
@@ -140,49 +149,48 @@ void PPU::render_text_bg(int bg)
 	int dx = io_read<u16>(IO_BG0HOFS + bg*4);
 	int dy = io_read<u16>(IO_BG0VOFS + bg*4);
 
-	for (int i = 0; i < LCD_HEIGHT; i++) {
-		for (int j = 0; j < LCD_WIDTH; j++) {
-			int bx = (dx + j) % w;
-			int by = (dy + i) % h;
+	int i = LY();
+	for (int j = 0; j < LCD_WIDTH; j++) {
+		int bx = (dx + j) % w;
+		int by = (dy + i) % h;
 
-			int sc = (by / 256)*2 + (bx / 256);
-			if (screen_size == 2) {
-				sc /= 2;
-			}
+		int sc = (by / 256)*2 + (bx / 256);
+		if (screen_size == 2) {
+			sc /= 2;
+		}
 
-			int tx = (bx % 256) / 8;
-			int ty = (by % 256) / 8;
+		int tx = (bx % 256) / 8;
+		int ty = (by % 256) / 8;
 
-			int px = bx % 8;
-			int py = by % 8;
+		int px = bx % 8;
+		int py = by % 8;
 
-			u32 se_offset = tilemap_base + sc*2_KiB + 2 * (ty*32 + tx);
-			u16 se = readarr<u16>(vram_data, se_offset);
+		u32 se_offset = tilemap_base + sc*2_KiB + 2 * (ty*32 + tx);
+		u16 se = readarr<u16>(vram_data, se_offset);
 
-			if (se & SE_HFLIP) {
-				px = 8 - px;
-			}
-			if (se & SE_VFLIP) {
-				py = 8 - py;
-			}
+		if (se & SE_HFLIP) {
+			px = 8 - px;
+		}
+		if (se & SE_VFLIP) {
+			py = 8 - py;
+		}
 
-			u16 tile_number = se & SE_TILENUMBER;
+		u16 tile_number = se & SE_TILENUMBER;
 
-			u32 tile_offset;
-			u8 palette_offset;
-			if (color_8) {
-				tile_offset = tileset_base + 64 * tile_number + py*8 + px;
-				palette_offset = readarr<u8>(vram_data, tile_offset);
-			} else {
-				tile_offset = (tileset_base + 32 * tile_number + py*4 + px/2);
-				palette_offset = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
-				palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_offset;
-			}
+		u32 tile_offset;
+		u8 palette_offset;
+		if (color_8) {
+			tile_offset = tileset_base + 64 * tile_number + py*8 + px;
+			palette_offset = readarr<u8>(vram_data, tile_offset);
+		} else {
+			tile_offset = (tileset_base + 32 * tile_number + py*4 + px/2);
+			palette_offset = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
+			palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_offset;
+		}
 
-			// UNSAFE -- at this point bg mode must be 0, 1, 2
-			if (palette_offset != 0 && tile_offset < 0x10000) {
-				framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
-			}
+		// UNSAFE -- at this point bg mode must be 0, 1, 2
+		if (palette_offset != 0 && tile_offset < 0x10000) {
+			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
 		}
 	}
 }
@@ -210,7 +218,9 @@ void PPU::do_bg_mode0()
 
 void PPU::copy_framebuffer_mode3()
 {
-	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
+	const int ly = LY();
+
+	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		framebuffer[i] = readarr<u16>(vram_data, i*2);
 	}
 }
@@ -223,7 +233,9 @@ void PPU::copy_framebuffer_mode4()
 		p += 40_KiB;
 	}
 
-	for (std::size_t i = 0; i < FRAMEBUFFER_SIZE; i++) {
+	const int ly = LY();
+
+	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		u8 offset = p[i];
 		framebuffer[i] = readarr<u16>(palette_data, offset * 2);
 	}
@@ -240,18 +252,21 @@ void PPU::copy_framebuffer_mode5()
 	const int w = 160;
 	const int h = 128;
 
-	for (int i = 0; i < h; i++) {
+	const int ly = LY();
+
+	if (ly < h) {
 		for (int j = 0; j < w; j++) {
-			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(p, (i*w + j) * 2);
+			framebuffer[ly*LCD_WIDTH + j] = readarr<u16>(p, (ly*w + j) * 2);
 		}
 		for (int j = w; j < LCD_WIDTH; j++) {
-			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
+			framebuffer[ly*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
+		}
+	} else {
+		for (int j = 0; j < LCD_WIDTH; j++) {
+			framebuffer[ly*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
 		}
 	}
 
 	for (int i = h; i < LCD_HEIGHT; i++) {
-		for (int j = 0; j < LCD_WIDTH; j++) {
-			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
-		}
 	}
 }

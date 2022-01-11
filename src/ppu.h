@@ -62,6 +62,7 @@ struct PPU {
 
 	void step();
 
+	void draw_scanline();
 	void on_vblank();
 	void do_bg_mode0();
 	void render_text_bg(int bg);
