@@ -82,15 +82,20 @@ void Cpu::step()
 	opi = (opi + 1) % OP_BUFFER_SIZE;
 #endif
 
-	// TODO: Use a scheduler for interrupts etc
-	if (io_read<u8>(IO_IME) & 1) {
+	if (!(CPSR & IRQ_DISABLE) && (io_read<u8>(IO_IME) & 1)) {
 		u16 inter_enable = io_read<u16>(IO_IE) & BITMASK(14);
 		u16 inter_flag = io_read<u16>(IO_IF) & BITMASK(14);
 
 		if (inter_enable & inter_flag) {
-			exception_prologue(IRQ, 0x12);
+			registers[IRQ][14] = pc - (in_thumb_state() ? 4 : 8) + 4;
+			SPSR[IRQ] = CPSR;
+			CPSR = (CPSR & ~BITMASK(5)) | 0x12;
+			update_mode();
+			set_flag(T_STATE, 0);
+			set_flag(IRQ_DISABLE, 1);
 			pc = VECTOR_IRQ;
-			flush_pipeline();
+			fetch();
+			fetch();
 		}
 	}
 
@@ -148,7 +153,6 @@ void Cpu::thumb_execute()
 
 	const u32 lut_offset = op >> 6;
 	ThumbInstruction *fp = thumb_lut[lut_offset];
-	fp(op);
 #ifdef DEBUG
 	if (fp) {
 		fp(op);
@@ -157,6 +161,8 @@ void Cpu::thumb_execute()
 		dump_buffer();
 		throw std::runtime_error("unhandled opcode in thumb mode");
 	}
+#else
+	fp(op);
 #endif
 }
 
@@ -169,12 +175,15 @@ bool Cpu::cond_triggered(u32 cond)
 void Cpu::arm_execute()
 {
 	const u32 op = pipeline[0];
+
 #ifdef DEBUG
 	if (debug) {
 		dump_registers();
 		fprintf(stderr, " %08X\n", op);
 	}
 #endif
+
+	//printf("%08X %08X\n", pc - 8, op);
 
 	const u32 op1 = op >> 20 & BITMASK(8);
 	const u32 op2 = op >> 4 & BITMASK(4);
@@ -184,7 +193,6 @@ void Cpu::arm_execute()
 	if (cond_triggered(cond)) {
 		const u32 lut_offset = (op1 << 4) + op2;
 		ArmInstruction *fp = arm_lut[lut_offset];
-		fp(op);
 #ifdef DEBUG
 		if (fp) {
 			fp(op);
@@ -193,6 +201,8 @@ void Cpu::arm_execute()
 			dump_buffer();
 			throw std::runtime_error("unhandled opcode");
 		}
+#else
+		fp(op);
 #endif
 	}
 }
@@ -227,7 +237,7 @@ void Cpu::switch_mode(cpu_mode_t new_mode)
 
 void Cpu::exception_prologue(cpu_mode_t mode, u8 flag)
 {
-	registers[mode][14] = pc - 4;
+	registers[mode][14] = pc - (in_thumb_state() ? 2 : 4);
 	SPSR[mode] = CPSR;
 	CPSR = (CPSR & ~BITMASK(5)) | flag;
 	update_mode();
@@ -356,13 +366,10 @@ void Cpu::dump_registers()
 	}
 
 	if (in_thumb_state()) {
-		fprintf(stderr, "%08X ", pc);
+		fprintf(stderr, "%08X ", pc - 2);
 	} else {
-		fprintf(stderr, "%08X ", pc);
+		fprintf(stderr, "%08X ", pc - 4);
 	}
 
 	fprintf(stderr, "cpsr: %08X |", CPSR);
-	for (int i = 0; i < 2; i++) {
-		fprintf(stderr, "%08X ", SPSR[i]);
-	}
 }

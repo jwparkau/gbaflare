@@ -317,10 +317,7 @@ void arm_alu(u32 op)
 	}
 
 	if (pc_written) {
-		if (*rd % 4 != 0) {
-			fprintf(stderr, "unaligned write to pc %08X\n", *rd);
-			*rd = align(*rd, 4);
-		}
+		*rd = align(*rd, cpu.in_thumb_state() ? 2 : 4);
 		cpu.flush_pipeline();
 	}
 }
@@ -625,7 +622,7 @@ void arm_block_dt(u32 op)
 		cpu.CPSR = *cpu.get_spsr();
 		cpu.update_mode();
 
-		u32 mask = (cpu.CPSR & T_STATE) ? 0xFFFF'FFFE : 0xFFFF'FFFC;
+		u32 mask = cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC;
 		WRITE_PC(cpu.cpu_read32(address) & mask);
 
 	} else if constexpr (load == 0 && psr == 0) {
