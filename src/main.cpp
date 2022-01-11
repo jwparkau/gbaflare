@@ -8,6 +8,7 @@
 #include "ppu.h"
 #include "memory.h"
 #include "platform.h"
+#include "timer.h"
 
 int main(int argc, char **argv)
 {
@@ -49,6 +50,7 @@ int main(int argc, char **argv)
 		}
 
 		cpu.step();
+		timer.step();
 		ppu.step();
 		t++;
 		input_counter++;

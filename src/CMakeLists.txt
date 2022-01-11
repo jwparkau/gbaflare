@@ -19,6 +19,7 @@ target_sources(gbaflare PUBLIC
 	thumb.cpp
 	ppu.cpp
 	platform.cpp
+	timer.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

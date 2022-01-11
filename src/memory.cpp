@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "timer.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -26,9 +27,10 @@ static u8 *const region_to_data[9] = {
 
 template<typename T> static T read(addr_t addr);
 template<typename T> static void write(addr_t addr, T data);
+template<typename T> static T mmio_read(addr_t addr);
 template<typename T> static void mmio_write(addr_t addr, T data);
 
-void request_interrupt(io_request_flags flag)
+void request_interrupt(u16 flag)
 {
 	u16 inter_flag = io_read<u16>(IO_IF);
 	inter_flag |= flag;
@@ -148,6 +150,10 @@ static T read(addr_t addr)
 		return BITMASK(sizeof(T));
 	}
 
+	if (region == MemoryRegion::IO) {
+		return mmio_read<T>(addr);
+	}
+
 	return readarr<T>(arr, offset);
 }
 
@@ -166,9 +172,38 @@ static void write(addr_t addr, T data)
 
 	if (region == MemoryRegion::IO) {
 		mmio_write<T>(addr, data);
+		return;
 	}
 
 	writearr<T>(arr, offset, data);
+}
+
+template<typename T>
+static T mmio_read(addr_t addr)
+{
+	u32 x = 0;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+		const std::size_t offset = addr + i - IO_START;
+
+		u32 value = io_data[offset];
+
+		switch (addr + i) {
+			case IO_TM0CNT_L:
+			case IO_TM0CNT_L+1:
+			case IO_TM1CNT_L:
+			case IO_TM1CNT_L+1:
+			case IO_TM2CNT_L:
+			case IO_TM2CNT_L+1:
+			case IO_TM3CNT_L:
+			case IO_TM3CNT_L+1:
+				value = timer.on_read(addr + i);
+		}
+
+		x |= value << (i * 8);
+	}
+
+	return x;
 }
 
 template<typename T>
@@ -197,6 +232,15 @@ static void mmio_write(addr_t addr, T data)
 
 		u8 old_value = io_data[offset];
 		u8 new_value = (old_value & ~mask) | (x & mask);
+
+		switch (addr + i) {
+			case IO_TM0CNT_H:
+			case IO_TM1CNT_H:
+			case IO_TM2CNT_H:
+			case IO_TM3CNT_H:
+				timer.on_write(addr + i, new_value);
+				break;
+		}
 
 		io_data[offset] = new_value;
 		x >>= 8;

@@ -46,6 +46,14 @@ enum io_registers {
 	IO_BG2VOFS	= 0x0400'001A,
 	IO_BG3HOFS	= 0x0400'001C,
 	IO_BG3VOFS	= 0x0400'001E,
+	IO_TM0CNT_L	= 0x0400'0100,
+	IO_TM1CNT_L	= 0x0400'0104,
+	IO_TM2CNT_L	= 0x0400'0108,
+	IO_TM3CNT_L	= 0x0400'010C,
+	IO_TM0CNT_H	= 0x0400'0102,
+	IO_TM1CNT_H	= 0x0400'0106,
+	IO_TM2CNT_H	= 0x0400'010A,
+	IO_TM3CNT_H	= 0x0400'010E,
 	IO_KEYINPUT	= 0x0400'0130,
 	IO_KEYCNT	= 0x0400'0132,
 	IO_IE		= 0x0400'0200,
@@ -92,7 +100,7 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 
-void request_interrupt(io_request_flags flag);
+void request_interrupt(u16 flag);
 
 addr_t resolve_memory_address(addr_t addr, MemoryRegion &region);
 
