@@ -67,7 +67,7 @@ void load_bios_rom(const char *filename)
 
 void set_initial_memory_state()
 {
-	write<u16>(IO_KEYINPUT, 0xFFFF);
+	io_write<u16>(IO_KEYINPUT, 0xFFFF);
 }
 
 /*
