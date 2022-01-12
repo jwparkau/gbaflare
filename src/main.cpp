@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 	cpu.fetch();
 	cpu.fetch();
 
-	schedule_event(960);
+	next_event = 960;
 
 	u64 tick_start = SDL_GetPerformanceCounter();
 	u64 freq = SDL_GetPerformanceFrequency();
@@ -54,14 +54,16 @@ int main(int argc, char **argv)
 
 		while (cpu_cycles < next_event) {
 			cpu.step();
-			timer.step();
 			t++;
 		}
 
 		start_event_processing();
 
+		timer.step();
 		ppu.step();
 		input_counter++;
+
+		end_event_processing();
 
 		if (input_counter == 5000) {
 			platform.handle_input(joypad_state);

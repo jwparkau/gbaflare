@@ -18,12 +18,14 @@ enum tmcnt_flags {
 
 struct Timer {
 	u64 timer_cycles{};
+	u64 last_timer_update{};
 
 	u32 tcycles[NUM_TIMERS]{};
 	u32 values[NUM_TIMERS]{};
 	u16 reload[NUM_TIMERS]{};
 
 	void step();
+	void simulate_elapsed(u64 dt);
 	void do_timer_increment(int i);
 	void on_timer_overflow(int i);
 

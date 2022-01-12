@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "timer.h"
 
 u64 cpu_cycles;
 u64 next_event;
@@ -23,18 +24,19 @@ void schedule_after(u64 dt)
 		cpu_cycles = 0;
 		t = dt;
 		last_event = 0;
+		timer.last_timer_update = 0;
 	}
 	schedule_event(t);
 }
 
 void start_event_processing()
 {
-	scheduler_flag = true;	
+	scheduler_flag = true;
 	elapsed = cpu_cycles - last_event;
 	last_event = cpu_cycles;
 }
 
 void end_event_processing()
 {
-
+	scheduler_flag = false;
 }

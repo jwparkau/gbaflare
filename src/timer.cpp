@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "memory.h"
+#include "scheduler.h"
 
 #include <iostream>
 
@@ -14,7 +15,12 @@ static const u32 timer_freq[] = {
 
 void Timer::step()
 {
-	timer_cycles++;
+	simulate_elapsed(elapsed);
+}
+
+void Timer::simulate_elapsed(u64 dt)
+{
+	last_timer_update = cpu_cycles;
 
 	for (int i = 0; i < NUM_TIMERS; i++) {
 		u8 tmcnt = TMCNT_H(i);
@@ -26,13 +32,20 @@ void Timer::step()
 			continue;
 		}
 
-		tcycles[i] += 1;
+		tcycles[i] += dt;
 		const u32 freq = timer_freq[tmcnt & TIMER_PRESCALE];
 
-		if (tcycles[i] >= freq) {
+		bool value_changed = false;
+
+		while (tcycles[i] >= freq) {
 			tcycles[i] -= freq;
 
 			do_timer_increment(i);
+			value_changed = true;
+		}
+
+		if (value_changed) {
+			schedule_after((0x10000 - values[i]) * freq);
 		}
 	}
 }
@@ -70,6 +83,8 @@ u8 Timer::on_read(addr_t addr)
 {
 	const int i = (addr - IO_TM0CNT_L) / 4;
 
+	simulate_elapsed(cpu_cycles - last_timer_update);
+
 	return values[i] >> (addr % 2 * 8) & BITMASK(8);
 }
 
@@ -77,7 +92,14 @@ void Timer::on_write(addr_t addr, u8 value)
 {
 	const int i = (addr - IO_TM0CNT_L) / 4;
 
+	simulate_elapsed(cpu_cycles - last_timer_update);
+
 	if (!(TMCNT_H(i) & TIMER_ENABLED) && (value & TIMER_ENABLED)) {
 		values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
+	}
+
+	if ((value & TIMER_ENABLED) && !(value & TIMER_COUNTUP)) {
+		const u32 freq = timer_freq[value & TIMER_PRESCALE];
+		schedule_after((0x10000 - values[i]) * freq);
 	}
 }
