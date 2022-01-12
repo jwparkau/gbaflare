@@ -1,6 +1,7 @@
 #include "ppu.h"
 #include "memory.h"
 #include "platform.h"
+#include "scheduler.h"
 
 #include <utility>
 #include <algorithm>
@@ -11,6 +12,26 @@ PPU ppu;
 
 void PPU::step()
 {
+	cycles += elapsed;
+
+	if (cycles >= 1232) {
+		cycles = 0;
+
+		LY() += 1;
+		if (LY() >= 228) {
+			LY() = 0;
+		}
+
+		if (LY() == LYC()) {
+			if (DISPSTAT() & LCD_VCOUNTER_IRQ) {
+				request_interrupt(IRQ_VCOUNTER);
+			}
+			DISPSTAT() |= LCD_VCOUNTER;
+		} else {
+			DISPSTAT() &= ~LCD_VCOUNTER;
+		}
+	}
+
 	switch (ppu_mode) {
 		case PPU_IN_DRAW:
 			if (cycles >= 960) {
@@ -55,23 +76,10 @@ void PPU::step()
 		DISPSTAT() &= ~LCD_HBLANK;
 	}
 
-	cycles += 1;
-	if (cycles >= 1232) {
-		cycles = 0;
-
-		LY() += 1;
-		if (LY() >= 228) {
-			LY() = 0;
-		}
-
-		if (LY() == LYC()) {
-			if (DISPSTAT() & LCD_VCOUNTER_IRQ) {
-				request_interrupt(IRQ_VCOUNTER);
-			}
-			DISPSTAT() |= LCD_VCOUNTER;
-		} else {
-			DISPSTAT() &= ~LCD_VCOUNTER;
-		}
+	if (cycles < 960 || cycles >= 1232) {
+		schedule_after(960 - (cycles % 1232));
+	} else {
+		schedule_after(1232 - cycles);
 	}
 }
 

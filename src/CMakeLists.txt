@@ -20,6 +20,7 @@ target_sources(gbaflare PUBLIC
 	ppu.cpp
 	platform.cpp
 	timer.cpp
+	scheduler.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

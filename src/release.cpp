@@ -8,3 +8,4 @@
 #include "thumb.cpp"
 #include "types.cpp"
 #include "timer.cpp"
+#include "scheduler.cpp"

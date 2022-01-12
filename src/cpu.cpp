@@ -2,6 +2,7 @@
 #include "arm.h"
 #include "thumb.h"
 #include "memory.h"
+#include "scheduler.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -101,6 +102,8 @@ void Cpu::step()
 
 	execute();
 	fetch();
+
+	cpu_cycles += 1;
 }
 
 void Cpu::fetch()
