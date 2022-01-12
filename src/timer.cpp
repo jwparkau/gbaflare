@@ -16,12 +16,12 @@ static const u32 timer_freq[] = {
 void Timer::step()
 {
 	simulate_elapsed(elapsed);
+
+	last_timer_update = 0;
 }
 
 void Timer::simulate_elapsed(u64 dt)
 {
-	last_timer_update = cpu_cycles;
-
 	for (int i = 0; i < NUM_TIMERS; i++) {
 		u8 tmcnt = TMCNT_H(i);
 		if (!(tmcnt & TIMER_ENABLED)) {
@@ -84,6 +84,7 @@ u8 Timer::on_read(addr_t addr)
 	const int i = (addr - IO_TM0CNT_L) / 4;
 
 	simulate_elapsed(cpu_cycles - last_timer_update);
+	last_timer_update = cpu_cycles;
 
 	return values[i] >> (addr % 2 * 8) & BITMASK(8);
 }
@@ -93,6 +94,7 @@ void Timer::on_write(addr_t addr, u8 value)
 	const int i = (addr - IO_TM0CNT_L) / 4;
 
 	simulate_elapsed(cpu_cycles - last_timer_update);
+	last_timer_update = cpu_cycles;
 
 	if (!(TMCNT_H(i) & TIMER_ENABLED) && (value & TIMER_ENABLED)) {
 		values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
