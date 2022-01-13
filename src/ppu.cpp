@@ -187,17 +187,18 @@ void PPU::render_text_bg(int bg)
 
 		u32 tile_offset;
 		u8 palette_offset;
+		u8 palette_number;
 		if (color_8) {
 			tile_offset = tileset_base + 64 * tile_number + py*8 + px;
-			palette_offset = readarr<u8>(vram_data, tile_offset);
+			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);
 		} else {
 			tile_offset = (tileset_base + 32 * tile_number + py*4 + px/2);
-			palette_offset = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
-			palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_offset;
+			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
+			palette_offset = (se >> 12 & BITMASK(4)) * 16 + palette_number;
 		}
 
 		// UNSAFE -- at this point bg mode must be 0, 1, 2
-		if (palette_offset != 0 && tile_offset < 0x10000) {
+		if (palette_number != 0 && tile_offset < 0x10000) {
 			framebuffer[i*LCD_WIDTH + j] = readarr<u16>(palette_data, palette_offset * 2);
 		}
 	}

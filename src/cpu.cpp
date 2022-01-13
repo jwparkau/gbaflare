@@ -88,6 +88,7 @@ void Cpu::step()
 		u16 inter_flag = io_read<u16>(IO_IF) & BITMASK(14);
 
 		if (inter_enable & inter_flag) {
+			//printf("%08X %08X interrupt\n", inter_enable, inter_flag);
 			registers[IRQ][14] = pc - (in_thumb_state() ? 4 : 8) + 4;
 			SPSR[IRQ] = CPSR;
 			CPSR = (CPSR & ~BITMASK(5)) | 0x12;

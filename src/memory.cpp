@@ -213,6 +213,7 @@ static void mmio_write(addr_t addr, T data)
 
 	for (std::size_t i = 0; i < sizeof(T); i++) {
 
+		u8 to_write = x & BITMASK(8);
 		u8 mask;
 
 		switch (addr + i) {
@@ -224,6 +225,11 @@ static void mmio_write(addr_t addr, T data)
 			case IO_DISPSTAT:
 				mask = 0xF8;
 				break;
+			case IO_IF:
+			case IO_IF + 1:
+				mask = to_write;
+				to_write = 0;
+				break;
 			default:
 				mask = 0xFF;
 		}
@@ -231,7 +237,7 @@ static void mmio_write(addr_t addr, T data)
 		const std::size_t offset = addr + i - IO_START;
 
 		u8 old_value = io_data[offset];
-		u8 new_value = (old_value & ~mask) | (x & mask);
+		u8 new_value = (old_value & ~mask) | (to_write & mask);
 
 		switch (addr + i) {
 			case IO_TM0CNT_H:
