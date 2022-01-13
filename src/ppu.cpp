@@ -177,10 +177,10 @@ void PPU::render_text_bg(int bg)
 		u16 se = readarr<u16>(vram_data, se_offset);
 
 		if (se & SE_HFLIP) {
-			px = 8 - px;
+			px = 7 - px;
 		}
 		if (se & SE_VFLIP) {
-			py = 8 - py;
+			py = 7 - py;
 		}
 
 		u16 tile_number = se & SE_TILENUMBER;
@@ -220,9 +220,12 @@ void PPU::do_bg_mode0()
 		return;
 	}
 
+	/*
 	for (auto x : bgs_to_render) {
 		render_text_bg(-x.second);
 	}
+	*/
+	render_text_bg(0);
 }
 
 void PPU::copy_framebuffer_mode3()
