@@ -5,6 +5,7 @@
 
 Platform platform;
 bool emulator_running = false;
+u16 joypad_state = 0xFFFF;
 
 enum joypad_buttons {
 	BUTTON_A,
@@ -21,7 +22,7 @@ enum joypad_buttons {
 };
 
 static joypad_buttons translate_sym(SDL_Keycode sym);
-static void update_joypad(joypad_buttons button, bool down, u16 &joypad_state);
+static void update_joypad(joypad_buttons button, bool down);
 
 int Platform::init()
 {
@@ -96,7 +97,7 @@ void Platform::render(u16 *pixels)
 	SDL_RenderPresent(renderer);
 }
 
-void Platform::handle_input(u16 &joypad_state)
+void Platform::handle_input()
 {
 	SDL_Event e;
 
@@ -109,14 +110,14 @@ void Platform::handle_input(u16 &joypad_state)
 		switch (e.type) {
 			case SDL_KEYDOWN:
 			case SDL_KEYUP:
-				update_joypad(translate_sym(e.key.keysym.sym), e.type == SDL_KEYDOWN, joypad_state);
+				update_joypad(translate_sym(e.key.keysym.sym), e.type == SDL_KEYDOWN);
 				break;
 		}
 	}
 
 }
 
-static void update_joypad(joypad_buttons button, bool down, u16 &joypad_state)
+static void update_joypad(joypad_buttons button, bool down)
 {
 	if (button != NOT_MAPPED) {
 		if (down) {

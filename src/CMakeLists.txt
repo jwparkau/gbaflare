@@ -1,4 +1,4 @@
-target_compile_options(gbaflare PUBLIC -Wall -Wextra -Winline -O2 -DDEBUG)
+target_compile_options(gbaflare PUBLIC -Wall -Wextra -Winline -O3 -DDEBUG)
 
 set_target_properties(gbaflare
     PROPERTIES
@@ -29,7 +29,7 @@ target_include_directories(gbaflare PUBLIC
 
 target_link_libraries(gbaflare SDL2::SDL2)
 
-target_compile_options(gbaflare-release PUBLIC -Wall -Wextra -Winline -O2)
+target_compile_options(gbaflare-release PUBLIC -Wall -Wextra -Winline -O3)
 
 set_target_properties(gbaflare-release
     PROPERTIES

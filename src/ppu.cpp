@@ -115,6 +115,8 @@ void PPU::draw_scanline()
 
 void PPU::on_vblank()
 {
+	platform.handle_input();
+	io_write<u16>(IO_KEYINPUT, joypad_state);
 	platform.render(framebuffer);
 }
 
@@ -220,12 +222,9 @@ void PPU::do_bg_mode0()
 		return;
 	}
 
-	/*
 	for (auto x : bgs_to_render) {
 		render_text_bg(-x.second);
 	}
-	*/
-	render_text_bg(0);
 }
 
 void PPU::copy_framebuffer_mode3()

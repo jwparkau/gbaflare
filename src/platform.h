@@ -22,11 +22,13 @@ struct Platform {
 	int init();
 
 	void render(u16 *pixels);
-	void handle_input(u16 &joypad_state);
+	void handle_input();
 };
 
 extern Platform platform;
 
 extern bool emulator_running;
+
+extern u16 joypad_state;
 
 #endif
