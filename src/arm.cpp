@@ -479,7 +479,6 @@ if constexpr (prepost == 1) {\
 
 		addr = align(address, 4);
 		rem = address & BITMASK(2);
-		
 		value = ror(cpu.cpu_read32(addr), rem * 8, carry);
 
 		if (rdi == 15) {
@@ -544,7 +543,7 @@ void arm_misc_dt(u32 op)
 	ADDRESS_WRITE;
 
 	if constexpr (load == 1 && half == 0) {
-		*rd = (s8)cpu.cpu_read8(address);	
+		*rd = (s8)cpu.cpu_read8(address);
 	} else if constexpr (load == 1 && half == 1) {
 		if constexpr (sign == 1) {
 			u32 addr;

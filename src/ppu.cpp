@@ -277,7 +277,4 @@ void PPU::copy_framebuffer_mode5()
 			framebuffer[ly*LCD_WIDTH + j] = readarr<u16>(palette_data, 0);
 		}
 	}
-
-	for (int i = h; i < LCD_HEIGHT; i++) {
-	}
 }

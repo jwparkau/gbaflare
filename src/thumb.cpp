@@ -292,7 +292,7 @@ void thumb_alu(u16 op)
 	} else if constexpr (aluop == 0xC) {
 		r = *rd = rn | operand;
 	} else if constexpr (aluop == 0xD) {
-		r = *rd = rn * operand;	
+		r = *rd = rn * operand;
 	} else if constexpr (aluop == 0xE) {
 		r = *rd = rn & (~operand);
 	} else if constexpr (aluop == 0xF) {
@@ -470,7 +470,7 @@ void thumb_sp_add(u16 op)
 	}
 }
 
-template <u32 code, u32 pclr> 
+template <u32 code, u32 pclr>
 void thumb_pushpop(u16 op)
 {
 	u32 register_list = op & BITMASK(8);
