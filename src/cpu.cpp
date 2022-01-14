@@ -10,13 +10,6 @@
 struct Cpu cpu;
 bool debug = false;
 
-#define OP_BUFFER_SIZE 10
-u32 opbuffer[OP_BUFFER_SIZE];
-u32 pcbuffer[OP_BUFFER_SIZE];
-int opi;
-
-void dump_buffer();
-
 static const bool cond_lut[16][16] = {
 	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
 	{1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
@@ -35,17 +28,6 @@ static const bool cond_lut[16][16] = {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 };
-
-void dump_buffer()
-{
-	for (int i = opi-1; i >= 0; i--) {
-		printf("PC: %08X    OP: %08X\n", pcbuffer[i], opbuffer[i]);
-	}
-
-	for (int i = OP_BUFFER_SIZE-1; i >= opi; i--) {
-		printf("PC: %08X    OP: %08X\n", pcbuffer[i], opbuffer[i]);
-	}
-}
 
 void Cpu::reset()
 {
@@ -75,13 +57,6 @@ void Cpu::step()
 	 * prefetch
 	 * tick other hw
 	 */
-
-#ifdef DEBUG
-	opbuffer[opi] = pipeline[0];
-	pcbuffer[opi] = pc - (in_thumb_state() ? 4 : 8);
-
-	opi = (opi + 1) % OP_BUFFER_SIZE;
-#endif
 
 	if (!(CPSR & IRQ_DISABLE) && (io_read<u8>(IO_IME) & 1)) {
 		u16 inter_enable = io_read<u16>(IO_IE) & BITMASK(14);
@@ -118,21 +93,11 @@ void Cpu::fetch()
 
 void Cpu::arm_fetch()
 {
-	u32 op = cpu_read32(pc);
-
-	pipeline[0] = pipeline[1];
-	pipeline[1] = op;
-
 	pc += 4;
 }
 
 void Cpu::thumb_fetch()
 {
-	u16 op = cpu_read16(pc);
-
-	pipeline[0] = pipeline[1];
-	pipeline[1] = op;
-
 	pc += 2;
 }
 
@@ -147,7 +112,7 @@ void Cpu::execute()
 
 void Cpu::thumb_execute()
 {
-	const u16 op = pipeline[0];
+	const u16 op = cpu_read32(pc - 4);
 #ifdef DEBUG
 	if (debug) {
 		dump_registers();
@@ -162,7 +127,6 @@ void Cpu::thumb_execute()
 		fp(op);
 	} else {
 		fprintf(stderr, "UNHANDLED THUMB %04X at %08X\n", op, pc - 4);
-		dump_buffer();
 		throw std::runtime_error("unhandled opcode in thumb mode");
 	}
 #else
@@ -178,7 +142,7 @@ bool Cpu::cond_triggered(u32 cond)
 
 void Cpu::arm_execute()
 {
-	const u32 op = pipeline[0];
+	const u32 op = cpu_read32(pc - 8);
 
 #ifdef DEBUG
 	if (debug) {
@@ -202,7 +166,6 @@ void Cpu::arm_execute()
 			fp(op);
 		} else {
 			fprintf(stderr, "UNHANDLED %08X\n", op);
-			dump_buffer();
 			throw std::runtime_error("unhandled opcode");
 		}
 #else

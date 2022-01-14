@@ -48,7 +48,6 @@ struct Cpu {
 	u32 SPSR[NUM_MODES]{};
 	u32 pc{};
 
-	u32 pipeline[2]{};
 	cpu_mode_t cpu_mode = SYSTEM;
 
 	// functions
