@@ -29,18 +29,6 @@ enum io_dispstat_flags {
 	LCD_VCOUNTER_IRQ = 0x20
 };
 
-enum io_bgcnt_flags {
-	BG_PRIORITY	= 0x3,
-	BG_MOSAIC	= 0x40,
-	BG_PALETTE	= 0x80,
-};
-
-enum sreen_entry_flags {
-	SE_TILENUMBER 	= BITMASK(10),
-	SE_HFLIP	= BIT(10),
-	SE_VFLIP	= BIT(11)
-};
-
 enum ppu_modes {
 	PPU_IN_DRAW,
 	PPU_IN_HBLANK,
@@ -64,6 +52,65 @@ struct pixel_info {
 	int layer;
 };
 
+#define BG_PRIORITY_MASK BITMASK(2)
+#define BG_PRIORITY_SHIFT 0
+#define BG_CBB_MASK BITMASK(2)
+#define BG_CBB_SHIFT 2
+#define BG_MOSAIC_MASK 1
+#define BG_MOSAIC_SHIFT 6
+#define BG_PALETTE_MASK 1
+#define BG_PALETTE_SHIFT 7
+#define BG_SBB_MASK BITMASK(5)
+#define BG_SBB_SHIFT 8
+#define BG_OVERFLOW 1
+#define BG_OVERFLOW_SHIFT 13
+#define BG_SCREEN_SIZE_MASK BITMASK(2)
+#define BG_SCREEN_SIZE_SHIFT 14
+
+#define SE_TILENUMBER_MASK BITMASK(10)
+#define SE_TILENUMBER_SHIFT 0
+#define SE_HFLIP_MASK 1
+#define SE_HFLIP_SHIFT 10
+#define SE_VFLIP_MASK 1
+#define SE_VFLIP_SHIFT 11
+#define SE_PALETTE_NUMBER_MASK BITMASK(4)
+#define SE_PALETTE_NUMBER_SHIFT 12
+
+#define OBJ_Y_MASK BITMASK(8)
+#define OBJ_Y_SHIFT 0
+#define OBJ_AFFINE_MASK 1
+#define OBJ_AFFINE_SHIFT 8
+#define OBJ_DISABLE_MASK 1
+#define OBJ_DISABLE_SHIFT 9
+#define OBJ_MODE_MASK BITMASK(2)
+#define OBJ_MODE_SHIFT 10
+#define OBJ_MOSAIC_MASK 1
+#define OBJ_MOSAIC_SHIFT 12
+#define OBJ_PALETTE_MASK 1
+#define OBJ_PALETTE_SHIFT 13
+#define OBJ_SHAPE_MASK BITMASK(2)
+#define OBJ_SHAPE_SHIFT 14
+
+#define OBJ_X_MASK BITMASK(9)
+#define OBJ_X_SHIFT 0
+#define OBJ_AFFINE_PARAMETER_MASK BITMASK(5)
+#define OBJ_AFFINE_PARAMETER_SHIFT 9
+#define OBJ_HFLIP_MASK 1
+#define OBJ_HFLIP_SHIFT 12
+#define OBJ_VFLIP_MASK 1
+#define OBJ_VFLIP_SHIFT 13
+#define OBJ_SIZE_MASK BITMASK(2)
+#define OBJ_SIZE_SHIFT 14
+
+#define OBJ_TILENUMBER_MASK BITMASK(10)
+#define OBJ_TILENUMBER_SHIFT 0
+#define OBJ_PRIORITY_MASK BITMASK(2)
+#define OBJ_PRIORITY_SHIFT 10
+#define OBJ_PALETTE_NUMBER_MASK BITMASK(4)
+#define OBJ_PALETTE_NUMBER_SHIFT 12
+
+#define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
+
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
@@ -83,7 +130,7 @@ struct PPU {
 
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
-	pixel_info obj_buffer[MAX_SPRITES]{};
+	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};
 
 	void step();
 
