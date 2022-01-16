@@ -47,6 +47,23 @@ enum ppu_modes {
 	PPU_IN_VBLANK
 };
 
+enum render_layers {
+	LAYER_BG0,
+	LAYER_BG1,
+	LAYER_BG2,
+	LAYER_BG3,
+	LAYER_OBJ,
+	LAYER_BD
+};
+
+struct pixel_info {
+	u16 color_555;
+	int priority;
+	int bg;
+	bool is_transparent;
+	int layer;
+};
+
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
@@ -55,20 +72,29 @@ enum ppu_modes {
 #define LCD_HEIGHT 160
 constexpr u32 FRAMEBUFFER_SIZE = LCD_WIDTH * LCD_HEIGHT;
 
+#define MAX_SPRITES 128
+
+#define MIN_PRIO 4
+
 struct PPU {
-	u16 framebuffer[FRAMEBUFFER_SIZE];
+	u16 framebuffer[FRAMEBUFFER_SIZE]{};
 	u32 cycles{};
 	ppu_modes ppu_mode = PPU_IN_DRAW;
+
+	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
+	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
+	pixel_info obj_buffer[MAX_SPRITES]{};
 
 	void step();
 
 	void draw_scanline();
 	void on_vblank();
 	void do_bg_mode0();
-	void render_text_bg(int bg);
+	void render_text_bg(int bg, int priority);
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();
+	void render_sprites();
 
 	bool bg_is_enabled(int i);
 };
