@@ -24,6 +24,7 @@ static const int BG_REGULAR_WIDTH[4] = {256, 512, 256, 512};
 static const int BG_REGULAR_HEIGHT[4] = {256, 256, 512, 512};
 
 PPU ppu;
+int vblank_flag;
 
 void PPU::step()
 {
@@ -103,6 +104,7 @@ void PPU::on_vblank()
 	platform.handle_input();
 	io_write<u16>(IO_KEYINPUT, joypad_state);
 	platform.render(framebuffer);
+	vblank_flag += 1;
 }
 
 

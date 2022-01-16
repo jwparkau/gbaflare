@@ -149,4 +149,6 @@ struct PPU {
 
 extern PPU ppu;
 
+extern int vblank_flag;
+
 #endif

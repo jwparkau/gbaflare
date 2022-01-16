@@ -43,7 +43,6 @@ int main(int argc, char **argv)
 	u64 tick_start = SDL_GetPerformanceCounter();
 	u64 freq = SDL_GetPerformanceFrequency();
 
-	u32 t = 0;
 	for (;;) {
 		if (!emulator_running) {
 			break;
@@ -51,7 +50,6 @@ int main(int argc, char **argv)
 
 		while (cpu_cycles < next_event) {
 			cpu.step();
-			t++;
 		}
 
 		start_event_processing();
@@ -61,12 +59,11 @@ int main(int argc, char **argv)
 
 		end_event_processing();
 
-		if (t >= 280896) {
-			t = 0;
+		if (vblank_flag == 60) {
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
-			//printf("took %f ms\n", 1000.0 * ticks / freq);
-			printf("fps: %f\n", (double)freq / ticks);
+			printf("fps: %f\n", 60*(double)freq / ticks);
 			tick_start = SDL_GetPerformanceCounter();
+			vblank_flag = 0;
 		}
 	}
 
