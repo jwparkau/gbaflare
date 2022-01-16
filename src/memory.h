@@ -30,7 +30,7 @@ constexpr addr_t VRAM_END = VRAM_START + VRAM_SIZE;
 constexpr addr_t OAM_END = OAM_START + OAM_SIZE;
 constexpr addr_t CARTRIDGE_END = CARTRIDGE_START + CARTRIDGE_SIZE;
 
-enum io_registers {
+enum io_registers : u32 {
 	IO_DISPCNT	= 0x0400'0000,
 	IO_DISPSTAT	= 0x0400'0004,
 	IO_VCOUNT	= 0x0400'0006,
@@ -61,7 +61,7 @@ enum io_registers {
 	IO_IME		= 0x0400'0208,
 };
 
-enum io_request_flags {
+enum io_request_flags : u32 {
 	IRQ_VBLANK	= 0x1,
 	IRQ_HBLANK	= 0x2,
 	IRQ_VCOUNTER	= 0x4,
@@ -102,7 +102,7 @@ extern u8 cartridge_data[CARTRIDGE_SIZE];
 
 void request_interrupt(u16 flag);
 
-addr_t resolve_memory_address(addr_t addr, MemoryRegion &region);
+u32 resolve_memory_address(addr_t addr, MemoryRegion &region);
 
 void load_bios_rom(const char *filename);
 void load_cartridge_rom(const char *filename);
@@ -119,7 +119,7 @@ namespace Memory {
 	void write8(addr_t addr, u8 data);
 }
 
-template<typename T> inline T readarr(u8 *arr, std::size_t offset)
+template<typename T> inline T readarr(u8 *arr, u32 offset)
 {
 	if constexpr (std::endian::native == std::endian::little) {
 		T x;
@@ -146,7 +146,7 @@ template<typename T> inline T readarr(u8 *arr, std::size_t offset)
 	}
 }
 
-template<typename T> inline void writearr(u8 *arr, std::size_t offset, T data)
+template<typename T> inline void writearr(u8 *arr, u32 offset, T data)
 {
 	if constexpr (std::endian::native == std::endian::little) {
 		memcpy(arr + offset, &data, sizeof(T));

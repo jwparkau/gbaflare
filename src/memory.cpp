@@ -42,7 +42,7 @@ void load_cartridge_rom(const char *filename)
 	std::ifstream f(filename, std::ios_base::binary);
 
 	f.read((char *)cartridge_data, CARTRIDGE_SIZE);
-	std::streamsize bytes_read = f.gcount();
+	auto bytes_read = f.gcount();
 
 	if (bytes_read == 0) {
 		throw std::runtime_error("ERROR while reading cartridge file");
@@ -56,7 +56,7 @@ void load_bios_rom(const char *filename)
 	std::ifstream f(filename, std::ios_base::binary);
 
 	f.read((char *)bios_data, BIOS_SIZE);
-	std::streamsize bytes_read = f.gcount();
+	auto bytes_read = f.gcount();
 
 	if (bytes_read == 0) {
 		throw std::runtime_error("ERROR while reading bios file");
@@ -73,14 +73,12 @@ void set_initial_memory_state()
 /*
  * Use a software cache later to make things faster
  */
-addr_t resolve_memory_address(addr_t addr, MemoryRegion &region)
+u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 {
-	addr_t offset = 0;
-	addr_t l1 = addr >> 24;
-
 	region = MemoryRegion::UNUSED;
+	u32 offset = 0;
 
-	switch (l1) {
+	switch (addr >> 24) {
 		case 0x00:
 			if (addr < BIOS_END) {
 				region = MemoryRegion::BIOS;
@@ -140,7 +138,7 @@ static T read(addr_t addr)
 {
 	MemoryRegion region = MemoryRegion::UNUSED;
 
-	std::size_t offset = resolve_memory_address(addr, region);
+	u32 offset = resolve_memory_address(addr, region);
 
 	u8 *arr = nullptr;
 
@@ -162,7 +160,7 @@ static void write(addr_t addr, T data)
 {
 	MemoryRegion region = MemoryRegion::UNUSED;
 
-	std::size_t offset = resolve_memory_address(addr, region);
+	u32 offset = resolve_memory_address(addr, region);
 
 	u8 *arr = region_to_data[region];
 
@@ -184,7 +182,7 @@ static T mmio_read(addr_t addr)
 	u32 x = 0;
 
 	for (std::size_t i = 0; i < sizeof(T); i++) {
-		const std::size_t offset = addr + i - IO_START;
+		u32 offset = addr - IO_START + i;
 
 		u32 value = io_data[offset];
 
@@ -234,7 +232,7 @@ static void mmio_write(addr_t addr, T data)
 				mask = 0xFF;
 		}
 
-		const std::size_t offset = addr + i - IO_START;
+		u32 offset = addr - IO_START + i;
 
 		u8 old_value = io_data[offset];
 		u8 new_value = (old_value & ~mask) | (to_write & mask);

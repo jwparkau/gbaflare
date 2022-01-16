@@ -112,7 +112,8 @@ void Cpu::execute()
 
 void Cpu::thumb_execute()
 {
-	const u16 op = cpu_read32(pc - 4);
+	u16 op = cpu_read32(pc - 4);
+
 #ifdef DEBUG
 	if (debug) {
 		dump_registers();
@@ -120,8 +121,8 @@ void Cpu::thumb_execute()
 	}
 #endif
 
-	const u32 lut_offset = op >> 6;
-	ThumbInstruction *fp = thumb_lut[lut_offset];
+	ThumbInstruction *fp = thumb_lut[op >> 6];
+
 #ifdef DEBUG
 	if (fp) {
 		fp(op);
@@ -142,7 +143,7 @@ bool Cpu::cond_triggered(u32 cond)
 
 void Cpu::arm_execute()
 {
-	const u32 op = cpu_read32(pc - 8);
+	u32 op = cpu_read32(pc - 8);
 
 #ifdef DEBUG
 	if (debug) {
@@ -153,13 +154,13 @@ void Cpu::arm_execute()
 
 	//printf("%08X %08X\n", pc - 8, op);
 
-	const u32 op1 = op >> 20 & BITMASK(8);
-	const u32 op2 = op >> 4 & BITMASK(4);
+	u32 op1 = op >> 20 & BITMASK(8);
+	u32 op2 = op >> 4 & BITMASK(4);
 
-	const u32 cond = op >> 28 & BITMASK(4);
+	u32 cond = op >> 28 & BITMASK(4);
 
 	if (cond_triggered(cond)) {
-		const u32 lut_offset = (op1 << 4) + op2;
+		u32 lut_offset = (op1 << 4) + op2;
 		ArmInstruction *fp = arm_lut[lut_offset];
 #ifdef DEBUG
 		if (fp) {

@@ -6,7 +6,7 @@
 
 Timer timer;
 
-static const u32 timer_freq[] = {
+static const int timer_freq[] = {
 	1,
 	64,
 	256,
@@ -33,7 +33,7 @@ void Timer::simulate_elapsed(u64 dt)
 		}
 
 		tcycles[i] += dt;
-		const u32 freq = timer_freq[tmcnt & TIMER_PRESCALE];
+		u32 freq = timer_freq[tmcnt & TIMER_PRESCALE];
 
 		bool value_changed = false;
 
@@ -65,7 +65,7 @@ void Timer::do_timer_increment(int i)
 
 void Timer::on_timer_overflow(int i)
 {
-	const u8 tmcnt = TMCNT_H(i);
+	u8 tmcnt = TMCNT_H(i);
 
 	if (tmcnt & TIMER_ENABLEIRQ) {
 		request_interrupt(IRQ_TIMER0 * BIT(i));
@@ -81,7 +81,7 @@ void Timer::on_timer_overflow(int i)
 
 u8 Timer::on_read(addr_t addr)
 {
-	const int i = (addr - IO_TM0CNT_L) / 4;
+	int i = (addr - IO_TM0CNT_L) / 4;
 
 	simulate_elapsed(cpu_cycles - last_timer_update);
 	last_timer_update = cpu_cycles;
@@ -91,7 +91,7 @@ u8 Timer::on_read(addr_t addr)
 
 void Timer::on_write(addr_t addr, u8 value)
 {
-	const int i = (addr - IO_TM0CNT_L) / 4;
+	int i = (addr - IO_TM0CNT_L) / 4;
 
 	simulate_elapsed(cpu_cycles - last_timer_update);
 	last_timer_update = cpu_cycles;
@@ -101,7 +101,7 @@ void Timer::on_write(addr_t addr, u8 value)
 	}
 
 	if ((value & TIMER_ENABLED) && !(value & TIMER_COUNTUP)) {
-		const u32 freq = timer_freq[value & TIMER_PRESCALE];
+		u32 freq = timer_freq[value & TIMER_PRESCALE];
 		schedule_after((0x10000 - values[i]) * freq);
 	}
 }

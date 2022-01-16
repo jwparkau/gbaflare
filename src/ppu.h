@@ -114,10 +114,11 @@ struct pixel_info {
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
+#define DISPCNT() io_data[IO_DISPCNT - IO_START]
 
-#define LCD_WIDTH 240
-#define LCD_HEIGHT 160
-constexpr u32 FRAMEBUFFER_SIZE = LCD_WIDTH * LCD_HEIGHT;
+#define LCD_WIDTH 240l
+#define LCD_HEIGHT 160l
+#define FRAMEBUFFER_SIZE LCD_WIDTH * LCD_HEIGHT
 
 #define MAX_SPRITES 128
 

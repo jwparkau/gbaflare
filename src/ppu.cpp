@@ -20,6 +20,9 @@ static const u8 OBJ_REGULAR_HEIGHT[3][4] = {
 	{16, 32, 32, 64}
 };
 
+static const int BG_REGULAR_WIDTH[4] = {256, 512, 256, 512};
+static const int BG_REGULAR_HEIGHT[4] = {256, 256, 512, 512};
+
 PPU ppu;
 
 void PPU::step()
@@ -95,18 +98,26 @@ void PPU::step()
 	}
 }
 
+void PPU::on_vblank()
+{
+	platform.handle_input();
+	io_write<u16>(IO_KEYINPUT, joypad_state);
+	platform.render(framebuffer);
+}
+
+
 void PPU::draw_scanline()
 {
-	u16 const backdrop = readarr<u16>(palette_data, 0);
+	u16 backdrop = readarr<u16>(palette_data, 0);
 
-	const int ly = LY();
+	int ly = LY();
 
-	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		bufferA[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
 		obj_buffer[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
 	}
 
-	const u8 bg_mode = io_read<u8>(IO_DISPCNT) & LCD_BGMODE;
+	int bg_mode = DISPCNT() & LCD_BGMODE;
 
 	switch (bg_mode) {
 		case 0:
@@ -127,7 +138,7 @@ void PPU::draw_scanline()
 
 	render_sprites();
 
-	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		framebuffer[i] = bufferA[i].color_555;
 		if (!obj_buffer[i].is_transparent && obj_buffer[i].layer != LAYER_BD && obj_buffer[i].priority <= bufferA[i].priority) {
 			framebuffer[i] = obj_buffer[i].color_555;
@@ -135,51 +146,23 @@ void PPU::draw_scanline()
 	}
 }
 
-void PPU::on_vblank()
-{
-	platform.handle_input();
-	io_write<u16>(IO_KEYINPUT, joypad_state);
-	platform.render(framebuffer);
-}
-
-bool PPU::bg_is_enabled(int i)
-{
-	return io_read<u8>(IO_DISPCNT + 1) & BIT(i);
-}
-
 void PPU::render_text_bg(int bg, int priority)
 {
-	const u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-	u8 sbb = GET_FLAG(bgcnt, BG_SBB);
-	u8 cbb = GET_FLAG(bgcnt, BG_CBB);
+	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
+
+	int screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);
+	int w = BG_REGULAR_WIDTH[screen_size];
+	int h = BG_REGULAR_HEIGHT[screen_size];
+
+	int sbb = GET_FLAG(bgcnt, BG_SBB);
+	int cbb = GET_FLAG(bgcnt, BG_CBB);
+	u32 tilemap_base = sbb * 2_KiB;
+	u32 tileset_base = cbb * 16_KiB;
+
+	u16 dx = io_read<u16>(IO_BG0HOFS + bg*4);
+	u16 dy = io_read<u16>(IO_BG0VOFS + bg*4);
+
 	bool color_8 = GET_FLAG(bgcnt, BG_PALETTE);
-	u8 screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);
-
-	int w, h;
-	switch (screen_size) {
-		case 0:
-			w = 256;
-			h = 256;
-			break;
-		case 1:
-			w = 512;
-			h = 256;
-			break;
-		case 2:
-			w = 256;
-			h = 512;
-			break;
-		case 3:
-			w = 512;
-			h = 512;
-			break;
-	}
-
-	addr_t tilemap_base = sbb * 2_KiB;
-	addr_t tileset_base = cbb * 16_KiB;
-
-	int dx = io_read<u16>(IO_BG0HOFS + bg*4);
-	int dy = io_read<u16>(IO_BG0VOFS + bg*4);
 
 	int i = LY();
 	for (int j = 0; j < LCD_WIDTH; j++) {
@@ -197,7 +180,7 @@ void PPU::render_text_bg(int bg, int priority)
 		int px = bx % 8;
 		int py = by % 8;
 
-		u32 se_offset = tilemap_base + sc*2_KiB + 2 * (ty*32 + tx);
+		u32 se_offset = tilemap_base + sc*2_KiB + 2*(ty*32 + tx);
 		u16 se = readarr<u16>(vram_data, se_offset);
 
 		if (GET_FLAG(se, SE_HFLIP)) {
@@ -207,31 +190,41 @@ void PPU::render_text_bg(int bg, int priority)
 			py = 7 - py;
 		}
 
-		u16 tile_number = GET_FLAG(se, SE_TILENUMBER);
+		int tile_number = GET_FLAG(se, SE_TILENUMBER);
+		int palette_bank = GET_FLAG(se, SE_PALETTE_NUMBER);
 
-		u32 tile_offset;
-		u8 palette_offset;
-		u8 palette_number;
-		if (color_8) {
-			tile_offset = tileset_base + 64 * tile_number + py*8 + px;
-			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);
-		} else {
-			tile_offset = (tileset_base + 32 * tile_number + py*4 + px/2);
-			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
-			palette_offset = GET_FLAG(se, SE_PALETTE_NUMBER) * 16 + palette_number;
+#define GET_PALETTE_OFFSET \
+		u32 tile_offset;\
+		int palette_offset;\
+		int palette_number;\
+		\
+		if (color_8) {\
+			tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;\
+			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+		} else {\
+			tile_offset = (tileset_base + (u32)tile_number*32 + py*4 + px/2);\
+			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);\
+			palette_offset = palette_bank * 16 + palette_number;\
 		}
 
-		// UNSAFE -- at this point bg mode must be 0, 1, 2
-		if (palette_number != 0 && tile_offset < 0x10000) {
-			const u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
-			const pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
+		GET_PALETTE_OFFSET;
 
-			const pixel_info other = bufferA[i*LCD_WIDTH + j];
+		u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
+
+		if (palette_number != 0 && tile_offset < 0x10000) {
+			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
+			pixel_info other = bufferA[i*LCD_WIDTH + j];
+
 			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
 				bufferA[i*LCD_WIDTH + j] = pixel;
 			}
 		}
 	}
+}
+
+bool PPU::bg_is_enabled(int i)
+{
+	return io_read<u8>(IO_DISPCNT + 1) & BIT(i);
 }
 
 void PPU::do_bg_mode0()
@@ -256,55 +249,46 @@ void PPU::do_bg_mode0()
 	}
 }
 
+#define BITMAP_BG_START \
+	int ly = LY();\
+	int bg = 2;\
+	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
+	int priority = GET_FLAG(bgcnt, BG_PRIORITY);
+
+#define BITMAP_GET_FRAME \
+	u8 *p = vram_data;\
+	if (DISPCNT() & LCD_FRAME) {\
+		p += 40_KiB;\
+	}
+
 void PPU::copy_framebuffer_mode3()
 {
-	const int ly = LY();
-	const int bg = 2;
-	const u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-	const int priority = GET_FLAG(bgcnt, BG_PRIORITY);
+	BITMAP_BG_START;
 
-	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
-		const u16 color_555 = readarr<u16>(vram_data, i*2);
-
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+		u16 color_555 = readarr<u16>(vram_data, i*2);
 		bufferA[i] = {color_555, priority, bg, false, LAYER_BG2};
 	}
 }
 
 void PPU::copy_framebuffer_mode4()
 {
-	u8 *p = vram_data;
+	BITMAP_BG_START;
+	BITMAP_GET_FRAME;
 
-	if (io_read<u8>(IO_DISPCNT) & LCD_FRAME) {
-		p += 40_KiB;
-	}
-
-	const int ly = LY();
-	const int bg = 2;
-	const u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-	const int priority = GET_FLAG(bgcnt, BG_PRIORITY);
-
-	for (int i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
-		u8 offset = p[i];
-		u16 color_555 = readarr<u16>(palette_data, offset * 2);
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+		u16 color_555 = readarr<u16>(palette_data, p[i]*2);
 		bufferA[i] = {color_555, priority, bg, false, LAYER_BG2};
 	}
 }
 
 void PPU::copy_framebuffer_mode5()
 {
-	u8 *p = vram_data;
-
-	if (io_read<u8>(IO_DISPCNT) & LCD_FRAME) {
-		p += 40_KiB;
-	}
+	BITMAP_BG_START;
+	BITMAP_GET_FRAME;
 
 	const int w = 160;
 	const int h = 128;
-
-	const int ly = LY();
-	const int bg = 2;
-	const u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-	const int priority = GET_FLAG(bgcnt, BG_PRIORITY);
 
 	if (ly < h) {
 		for (int j = 0; j < w; j++) {
@@ -343,8 +327,8 @@ void PPU::render_sprites()
 			objy -= 256;
 		}
 
-		u8 shape = GET_FLAG(attr0, OBJ_SHAPE);
-		u8 size = GET_FLAG(attr1, OBJ_SIZE);
+		int shape = GET_FLAG(attr0, OBJ_SHAPE);
+		int size = GET_FLAG(attr1, OBJ_SIZE);
 
 		int obj_w = OBJ_REGULAR_WIDTH[shape][size];
 		int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
@@ -361,9 +345,8 @@ void PPU::render_sprites()
 		int ty = sprite_y / 8;
 		int py = sprite_y % 8;
 
-		int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
-
 		bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
+		int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
 		int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
 		int priority = GET_FLAG(attr2, OBJ_PRIORITY);
 
@@ -382,9 +365,8 @@ void PPU::render_sprites()
 			int px = sprite_x % 8;
 
 			int tile_number;
-			int tile_offset;
 
-			if (io_read<u8>(IO_DISPCNT) & LCD_OBJ_DIM) {
+			if (DISPCNT() & LCD_OBJ_DIM) {
 				if (color_8) {
 					tile_number = tile_start + ty*2*(obj_w/8) + 2*tx;
 				} else {
@@ -397,20 +379,13 @@ void PPU::render_sprites()
 					tile_number = tile_start + ty*32 + tx;
 				}
 			}
+
 			tile_number %= 1024;
+			u32 tileset_base = 0x10000;
 
-			u8 palette_number;
-			u8 palette_offset;
-			if (color_8) {
-				tile_offset = 0x10000 + tile_number*64 + py*8 + px;
-				palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);
-			} else {
-				tile_offset = 0x10000 + tile_number*32 + py*4 + px/2;
-				palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);
-				palette_offset = palette_bank * 16 + palette_number;
-			}
+			GET_PALETTE_OFFSET;
 
-			u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
+			u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
 
 			if (palette_number != 0) {
 				pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
