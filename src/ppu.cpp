@@ -319,21 +319,36 @@ void PPU::render_sprites()
 		int objx = GET_FLAG(attr1, OBJ_X);
 		int objy = GET_FLAG(attr0, OBJ_Y);
 
-		if (objx >= LCD_WIDTH) {
-			objx -= 512;
-		}
-
-		if (objy >= LCD_HEIGHT) {
-			objy -= 256;
-		}
-
 		int shape = GET_FLAG(attr0, OBJ_SHAPE);
 		int size = GET_FLAG(attr1, OBJ_SIZE);
 
 		int obj_w = OBJ_REGULAR_WIDTH[shape][size];
 		int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
 
-		if (!(objy <= ly && ly < objy + obj_h)) {
+		int box_x, box_y, box_w, box_h;
+
+		box_x = objx;
+		box_y = objy;
+		box_w = obj_w;
+		box_h = obj_h;
+
+		if (is_affine && double_size) {
+			box_w *= 2;
+			box_h *= 2;
+			objx += obj_w / 2;
+			objy += obj_h / 2;
+		}
+
+		if (box_x >= LCD_WIDTH) {
+			box_x -= 512;
+			objx -= 512;
+		}
+		if (box_y >= LCD_HEIGHT) {
+			box_y -= 256;
+			objy -= 256;
+		}
+
+		if (!(box_y <= ly && ly < box_y + box_h)) {
 			continue;
 		}
 
@@ -342,6 +357,7 @@ void PPU::render_sprites()
 			sprite_y = obj_h - 1 - sprite_y;
 		}
 
+		int sprite_x = box_x - objx;
 
 		bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
 		int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
@@ -354,7 +370,7 @@ void PPU::render_sprites()
 		u16 y0 = obj_h / 2;
 
 		u16 pa, pb, pc, pd;
-		u16 x2, y2;
+		u16 x2 = 0, y2 = 0;
 		if (is_affine) {
 			int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
 			u32 affine_base_addr = 0x20 * affine_index + 6;
@@ -364,15 +380,12 @@ void PPU::render_sprites()
 			pc = readarr<u16>(oam_data, affine_base_addr+16);
 			pd = readarr<u16>(oam_data, affine_base_addr+24);
 
-			x2 = (-x0)*pa + (sprite_y-y0)*pb + (x0 << 8);
-			y2 = (-x0)*pc + (sprite_y-y0)*pd + (y0 << 8);
+			x2 = (sprite_x-x0)*pa + (sprite_y-y0)*pb + (x0 << 8);
+			y2 = (sprite_x-x0)*pc + (sprite_y-y0)*pd + (y0 << 8);
 		}
 
-		for (int sprite_x = (hflip ? obj_w-1 : 0), j = objx; j < objx + obj_w; sprite_x += (hflip ? -1 : 1), j++) {
-			if (j < 0) {
-				continue;
-			}
-
+		int j;
+		for (sprite_x = (hflip ? box_w-1 : 0), j = box_x; j < box_x + box_w; sprite_x += (hflip ? -1 : 1), j++) {
 			if (j >= LCD_WIDTH) {
 				break;
 			}
@@ -383,6 +396,10 @@ void PPU::render_sprites()
 
 				x2 += pa;
 				y2 += pc;
+			}
+
+			if (j < 0) {
+				continue;
 			}
 
 			if (sprite_y < 0 || sprite_y >= obj_h) {
