@@ -119,7 +119,9 @@ void PPU::draw_scanline()
 		obj_buffer[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
 	}
 
-	int bg_mode = DISPCNT() & LCD_BGMODE;
+	u16 dispcnt = io_read<u16>(IO_DISPCNT);
+
+	int bg_mode = dispcnt & LCD_BGMODE;
 
 	switch (bg_mode) {
 		case 0:
@@ -138,7 +140,9 @@ void PPU::draw_scanline()
 			return;
 	}
 
-	render_sprites();
+	if (dispcnt & LCD_OBJ) {
+		render_sprites();
+	}
 
 	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		framebuffer[i] = bufferA[i].color_555;
