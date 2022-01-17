@@ -28,6 +28,7 @@ struct Platform {
 extern Platform platform;
 
 extern bool emulator_running;
+extern bool throttle_enabled;
 
 extern u16 joypad_state;
 
