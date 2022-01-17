@@ -82,6 +82,8 @@ struct pixel_info {
 #define OBJ_AFFINE_SHIFT 8
 #define OBJ_DISABLE_MASK 1
 #define OBJ_DISABLE_SHIFT 9
+#define OBJ_DOUBLESIZE_MASK 1
+#define OBJ_DOUBLESIZE_SHIFT 9
 #define OBJ_MODE_MASK BITMASK(2)
 #define OBJ_MODE_SHIFT 10
 #define OBJ_MOSAIC_MASK 1

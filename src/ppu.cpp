@@ -309,14 +309,12 @@ void PPU::render_sprites()
 		u16 attr1 = readarr<u16>(oam_data, i*8 + 2);
 		u16 attr2 = readarr<u16>(oam_data, i*8 + 4);
 
-		if (GET_FLAG(attr0, OBJ_AFFINE)) {
-			continue;
-		}
-
 		if (GET_FLAG(attr0, OBJ_DISABLE) && !GET_FLAG(attr0, OBJ_AFFINE)) {
 			continue;
 		}
 
+		bool is_affine = GET_FLAG(attr0, OBJ_AFFINE);
+		bool double_size = GET_FLAG(attr0, OBJ_DOUBLESIZE);
 
 		int objx = GET_FLAG(attr1, OBJ_X);
 		int objy = GET_FLAG(attr0, OBJ_Y);
@@ -340,21 +338,37 @@ void PPU::render_sprites()
 		}
 
 		int sprite_y = ly - objy;
-		if (GET_FLAG(attr1, OBJ_VFLIP)) {
+		if (!is_affine && GET_FLAG(attr1, OBJ_VFLIP)) {
 			sprite_y = obj_h - 1 - sprite_y;
 		}
 
-		int ty = sprite_y / 8;
-		int py = sprite_y % 8;
 
 		bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
 		int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
 		int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
 		int priority = GET_FLAG(attr2, OBJ_PRIORITY);
 
-		bool hflip = GET_FLAG(attr1, OBJ_HFLIP);
+		bool hflip = GET_FLAG(attr1, OBJ_HFLIP) && !is_affine;
 
-		for (int sprite_x = (hflip ? obj_w-1 : 0), j = objx; sprite_x != (hflip ? -1 : obj_w); sprite_x += (hflip ? -1 : 1), j++) {
+		u16 x0 = obj_w / 2;
+		u16 y0 = obj_h / 2;
+
+		u16 pa, pb, pc, pd;
+		u16 x2, y2;
+		if (is_affine) {
+			int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
+			u32 affine_base_addr = 0x20 * affine_index + 6;
+
+			pa = readarr<u16>(oam_data, affine_base_addr);
+			pb = readarr<u16>(oam_data, affine_base_addr+8);
+			pc = readarr<u16>(oam_data, affine_base_addr+16);
+			pd = readarr<u16>(oam_data, affine_base_addr+24);
+
+			x2 = (-x0)*pa + (sprite_y-y0)*pb + (x0 << 8);
+			y2 = (-x0)*pc + (sprite_y-y0)*pd + (y0 << 8);
+		}
+
+		for (int sprite_x = (hflip ? obj_w-1 : 0), j = objx; j < objx + obj_w; sprite_x += (hflip ? -1 : 1), j++) {
 			if (j < 0) {
 				continue;
 			}
@@ -363,8 +377,26 @@ void PPU::render_sprites()
 				break;
 			}
 
+			if (is_affine) {
+				sprite_x = (s16)x2 >> 8;
+				sprite_y = (s16)y2 >> 8;
+
+				x2 += pa;
+				y2 += pc;
+			}
+
+			if (sprite_y < 0 || sprite_y >= obj_h) {
+				continue;
+			}
+			if (sprite_x < 0 || sprite_x >= obj_w) {
+				continue;
+			}
+
 			int tx = sprite_x / 8;
 			int px = sprite_x % 8;
+
+			int ty = sprite_y / 8;
+			int py = sprite_y % 8;
 
 			int tile_number;
 

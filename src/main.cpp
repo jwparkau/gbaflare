@@ -64,7 +64,6 @@ int main(int argc, char **argv)
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
 			printf("fps: %f\n", (double)freq / ticks);
 
-			/*
 			s64 ticks_sleep = frame_duration - ticks;
 			if (ticks_sleep <= 0) {
 				vblank_flag = 0;
@@ -75,7 +74,6 @@ int main(int argc, char **argv)
 			while (SDL_GetPerformanceCounter() < tick_start + frame_duration) {
 
 			}
-			*/
 
 			tick_start = SDL_GetPerformanceCounter();
 			vblank_flag = 0;
