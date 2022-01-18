@@ -8,6 +8,8 @@
 #include <cstring>
 #include <vector>
 
+
+
 static const u8 OBJ_REGULAR_WIDTH[3][4] = {
 	{8, 16, 32, 64},
 	{16, 32, 32, 64},
@@ -125,7 +127,7 @@ void PPU::draw_scanline()
 
 	switch (bg_mode) {
 		case 0:
-			do_bg_mode0();
+			do_bg_mode<0>();
 			break;
 		case 3:
 			copy_framebuffer_mode3();
@@ -233,15 +235,17 @@ bool PPU::bg_is_enabled(int i)
 	return io_read<u8>(IO_DISPCNT + 1) & BIT(i);
 }
 
-void PPU::do_bg_mode0()
+template<u8 mode> void PPU::do_bg_mode()
 {
 	int priority;
 
 	std::vector<std::pair<int, int>> bgs_to_render;
-	for (int i = 0; i < 4; i++) {
-		if (bg_is_enabled(i)) {
-			priority = GET_FLAG(io_read<u8>(IO_BG0CNT + i*2), BG_PRIORITY);
-			bgs_to_render.push_back(std::make_pair(priority, -i));
+	if constexpr (mode == 0) {
+		for (int i = 0; i < 4; i++) {
+			if (bg_is_enabled(i)) {
+				priority = GET_FLAG(io_read<u8>(IO_BG0CNT + i*2), BG_PRIORITY);
+				bgs_to_render.push_back(std::make_pair(priority, -i));
+			}
 		}
 	}
 
@@ -250,10 +254,14 @@ void PPU::do_bg_mode0()
 		return;
 	}
 
-	for (auto x : bgs_to_render) {
-		render_text_bg(-x.second, x.first);
+	if constexpr (mode == 0) {
+		for (auto x : bgs_to_render) {
+			render_text_bg(-x.second, x.first);
+		}
 	}
 }
+
+template void PPU::do_bg_mode<0>();
 
 #define BITMAP_BG_START \
 	int ly = LY();\

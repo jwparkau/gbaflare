@@ -139,7 +139,7 @@ struct PPU {
 
 	void draw_scanline();
 	void on_vblank();
-	void do_bg_mode0();
+	template<u8 mode> void do_bg_mode();
 	void render_text_bg(int bg, int priority);
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
