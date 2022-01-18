@@ -171,6 +171,14 @@ static void write(addr_t addr, T data)
 
 	u32 offset = resolve_memory_address(addr, region);
 
+	switch (region) {
+		case MemoryRegion::BIOS:
+		case MemoryRegion::CARTRIDGE:
+			return;
+		default:
+			break;
+	}
+
 	u8 *arr = region_to_data[region];
 
 	if (!arr) {
