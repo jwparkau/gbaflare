@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 
 	set_initial_memory_state();
 
-	cpu.fakeboot();
+	//cpu.fakeboot();
 	cpu.fetch();
 	cpu.fetch();
 

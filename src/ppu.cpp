@@ -141,6 +141,9 @@ void PPU::draw_scanline()
 		case 1:
 			do_bg_mode<1>();
 			break;
+		case 2:
+			do_bg_mode<2>();
+			break;
 		case 3:
 			copy_framebuffer_mode3();
 			break;
@@ -345,6 +348,9 @@ template<u8 mode> void PPU::do_bg_mode()
 		ADD_BACKGROUND(0);
 		ADD_BACKGROUND(1);
 		ADD_BACKGROUND(2);
+	} else if constexpr (mode == 2) {
+		ADD_BACKGROUND(2);
+		ADD_BACKGROUND(3);
 	}
 
 	std::sort(bgs_to_render.begin(), bgs_to_render.end());
@@ -364,11 +370,16 @@ template<u8 mode> void PPU::do_bg_mode()
 				render_affine_bg(-x.second, x.first);
 			}
 		}
+	} else if constexpr (mode == 2) {
+		for (auto x : bgs_to_render) {
+			render_affine_bg(-x.second, x.first);
+		}
 	}
 }
 
 template void PPU::do_bg_mode<0>();
 template void PPU::do_bg_mode<1>();
+template void PPU::do_bg_mode<2>();
 
 #define BITMAP_BG_START \
 	int ly = LY();\
