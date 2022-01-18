@@ -136,6 +136,15 @@ u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 template<typename T>
 static T read(addr_t addr)
 {
+	if constexpr (sizeof(T) == sizeof(u8)) {
+		if (addr == 0x0E000000) {
+			return 0x62;
+		}
+		if (addr == 0x0E000001) {
+			return 0x13;
+		}
+	}
+
 	MemoryRegion region = MemoryRegion::UNUSED;
 
 	u32 offset = resolve_memory_address(addr, region);
