@@ -6,7 +6,7 @@
 Platform platform;
 bool emulator_running = false;
 u16 joypad_state = 0xFFFF;
-bool throttle_enabled = false;
+bool throttle_enabled = true;
 
 enum joypad_buttons {
 	BUTTON_A,
