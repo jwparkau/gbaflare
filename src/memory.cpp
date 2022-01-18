@@ -1,5 +1,6 @@
 #include "memory.h"
 #include "timer.h"
+#include "ppu.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -226,6 +227,8 @@ static void mmio_write(addr_t addr, T data)
 {
 	u32 x = data;
 
+	bool update_affine_ref = false;
+
 	for (std::size_t i = 0; i < sizeof(T); i++) {
 
 		u8 to_write = x & BITMASK(8);
@@ -263,8 +266,16 @@ static void mmio_write(addr_t addr, T data)
 				break;
 		}
 
+		if ((IO_BG2X_L <= addr + i && addr + 1 < IO_BG2Y_H + 2) || (IO_BG3X_L <= addr + i && addr + 1 < IO_BG3Y_H + 2)) {
+			update_affine_ref = true;
+		}
+
 		io_data[offset] = new_value;
 		x >>= 8;
+	}
+
+	if (update_affine_ref) {
+		ppu.copy_affine_ref();
 	}
 }
 

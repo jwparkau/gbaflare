@@ -8,8 +8,6 @@
 #include <cstring>
 #include <vector>
 
-
-
 static const u8 OBJ_REGULAR_WIDTH[3][4] = {
 	{8, 16, 32, 64},
 	{16, 32, 32, 64},
@@ -24,6 +22,9 @@ static const u8 OBJ_REGULAR_HEIGHT[3][4] = {
 
 static const int BG_REGULAR_WIDTH[4] = {256, 512, 256, 512};
 static const int BG_REGULAR_HEIGHT[4] = {256, 256, 512, 512};
+
+/* affine bgs are always square */
+static const int BG_AFFINE_DIM[4] = {128, 256, 512, 1024};
 
 PPU ppu;
 int vblank_flag;
@@ -103,12 +104,20 @@ void PPU::step()
 
 void PPU::on_vblank()
 {
+	copy_affine_ref();
 	platform.handle_input();
 	io_write<u16>(IO_KEYINPUT, joypad_state);
 	platform.render(framebuffer);
 	vblank_flag += 1;
 }
 
+void PPU::copy_affine_ref()
+{
+	ref_x[0] = (s32)(io_read<u32>(IO_BG2X_L) << 4) >> 4;
+	ref_y[0] = (s32)(io_read<u32>(IO_BG2Y_L) << 4) >> 4;
+	ref_x[1] = (s32)(io_read<u32>(IO_BG3X_L) << 4) >> 4;
+	ref_y[1] = (s32)(io_read<u32>(IO_BG3Y_L) << 4) >> 4;
+}
 
 void PPU::draw_scanline()
 {
@@ -128,6 +137,9 @@ void PPU::draw_scanline()
 	switch (bg_mode) {
 		case 0:
 			do_bg_mode<0>();
+			break;
+		case 1:
+			do_bg_mode<1>();
 			break;
 		case 3:
 			copy_framebuffer_mode3();
@@ -152,6 +164,11 @@ void PPU::draw_scanline()
 			framebuffer[i] = obj_buffer[i].color_555;
 		}
 	}
+
+	ref_x[0] += (s32)(s16)io_read<u16>(IO_BG2PB);
+	ref_y[0] += (s32)(s16)io_read<u16>(IO_BG2PD);
+	ref_x[1] += (s32)(s16)io_read<u16>(IO_BG3PB);
+	ref_y[1] += (s32)(s16)io_read<u16>(IO_BG2PD);
 }
 
 void PPU::render_text_bg(int bg, int priority)
@@ -230,23 +247,104 @@ void PPU::render_text_bg(int bg, int priority)
 	}
 }
 
+void PPU::render_affine_bg(int bg, int priority)
+{
+	int ly = LY();
+
+	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
+
+	int screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);
+	int w = BG_AFFINE_DIM[screen_size];
+	int h = BG_AFFINE_DIM[screen_size];
+
+	int sbb = GET_FLAG(bgcnt, BG_SBB);
+	int cbb = GET_FLAG(bgcnt, BG_CBB);
+	u32 tilemap_base = sbb * 2_KiB;
+	u32 tileset_base = cbb * 16_KiB;
+
+	bool affine_wrap = GET_FLAG(bgcnt, BG_OVERFLOW);
+
+	u32 pa = (s32)(s16)io_read<u16>(IO_START + bg*0x10);
+	u32 pc = (s32)(s16)io_read<u16>(IO_START + bg*0x10 + 4);
+
+	u32 x2 = ref_x[bg-2];
+	u32 y2 = ref_y[bg-2];
+
+	int i = ly;
+	int j;
+	for (j = 0; j < w; j++) {
+		if (j >= LCD_WIDTH) {
+			break;
+		}
+
+		int bx = (s32)x2 >> 8;
+		int by = (s32)y2 >> 8;
+
+		x2 += pa;
+		y2 += pc;
+
+		if (affine_wrap) {
+			bx = (bx % w + w) % w;
+			by = (by % h + h) % h;
+		}
+
+		if (bx < 0 || bx >= w || by < 0 || by >= h) {
+			continue;
+		}
+
+		int tx = bx / 8;
+		int ty = by / 8;
+
+		int px = bx % 8;
+		int py = by % 8;
+
+		u32 se_offset = tilemap_base + ty*(w/8) + tx;
+		int tile_number = readarr<u8>(vram_data, se_offset);
+
+		u32 tile_offset;
+		int palette_offset;
+		int palette_number;
+		tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;\
+		palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+
+		u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
+
+		if (palette_number != 0 && tile_offset < 0x10000) {
+			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
+			pixel_info other = bufferA[i*LCD_WIDTH + j];
+
+			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
+				bufferA[i*LCD_WIDTH + j] = pixel;
+			}
+		}
+	}
+}
+
 bool PPU::bg_is_enabled(int i)
 {
 	return io_read<u8>(IO_DISPCNT + 1) & BIT(i);
 }
 
+#define ADD_BACKGROUND(x) \
+	if (bg_is_enabled((x))) {\
+		priority = GET_FLAG(io_read<u8>(IO_BG0CNT + (x)*2), BG_PRIORITY);\
+		bgs_to_render.push_back(std::make_pair(priority, -(x)));\
+	}
+
 template<u8 mode> void PPU::do_bg_mode()
 {
 	int priority;
-
 	std::vector<std::pair<int, int>> bgs_to_render;
+
 	if constexpr (mode == 0) {
-		for (int i = 0; i < 4; i++) {
-			if (bg_is_enabled(i)) {
-				priority = GET_FLAG(io_read<u8>(IO_BG0CNT + i*2), BG_PRIORITY);
-				bgs_to_render.push_back(std::make_pair(priority, -i));
-			}
-		}
+		ADD_BACKGROUND(0);
+		ADD_BACKGROUND(1);
+		ADD_BACKGROUND(2);
+		ADD_BACKGROUND(3);
+	} else if constexpr (mode == 1) {
+		ADD_BACKGROUND(0);
+		ADD_BACKGROUND(1);
+		ADD_BACKGROUND(2);
 	}
 
 	std::sort(bgs_to_render.begin(), bgs_to_render.end());
@@ -258,10 +356,19 @@ template<u8 mode> void PPU::do_bg_mode()
 		for (auto x : bgs_to_render) {
 			render_text_bg(-x.second, x.first);
 		}
+	} else if constexpr (mode == 1) {
+		for (auto x : bgs_to_render) {
+			if (-x.second < 2) {
+				render_text_bg(-x.second, x.first);
+			} else {
+				render_affine_bg(-x.second, x.first);
+			}
+		}
 	}
 }
 
 template void PPU::do_bg_mode<0>();
+template void PPU::do_bg_mode<1>();
 
 #define BITMAP_BG_START \
 	int ly = LY();\

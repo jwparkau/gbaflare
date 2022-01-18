@@ -62,7 +62,7 @@ struct pixel_info {
 #define BG_PALETTE_SHIFT 7
 #define BG_SBB_MASK BITMASK(5)
 #define BG_SBB_SHIFT 8
-#define BG_OVERFLOW 1
+#define BG_OVERFLOW_MASK 1
 #define BG_OVERFLOW_SHIFT 13
 #define BG_SCREEN_SIZE_MASK BITMASK(2)
 #define BG_SCREEN_SIZE_SHIFT 14
@@ -135,18 +135,25 @@ struct PPU {
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
 	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};
 
+	/* convert them to have 12 fractional bits */
+	u32 ref_x[2]{};
+	u32 ref_y[2]{};
+
 	void step();
 
 	void draw_scanline();
 	void on_vblank();
 	template<u8 mode> void do_bg_mode();
 	void render_text_bg(int bg, int priority);
+	void render_affine_bg(int bg, int priority);
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();
 	void render_sprites();
 
 	bool bg_is_enabled(int i);
+
+	void copy_affine_ref();
 };
 
 extern PPU ppu;

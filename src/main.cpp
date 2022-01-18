@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
 		if (vblank_flag == 1) {
 			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
-			printf("fps: %f\n", (double)freq / ticks);
+			//printf("fps: %f\n", (double)freq / ticks);
 
 			if (throttle_enabled) {
 				while (SDL_GetPerformanceCounter() < tick_start + frame_duration)
