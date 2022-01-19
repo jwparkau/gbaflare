@@ -246,7 +246,7 @@ void PPU::render_text_bg(int bg, int priority)
 
 		GET_PALETTE_OFFSET;
 
-		u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
+		u16 color_555 = readarr<u16>(palette_data, palette_offset*2);
 
 		if (palette_number != 0 && tile_offset < 0x10000) {
 			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
@@ -316,10 +316,10 @@ void PPU::render_affine_bg(int bg, int priority)
 		u32 tile_offset;
 		int palette_offset;
 		int palette_number;
-		tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;\
-			      palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+		tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;
+		palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);
 
-			      u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
+		u16 color_555 = readarr<u16>(palette_data, palette_offset*2);
 
 		if (palette_number != 0 && tile_offset < 0x10000) {
 			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
@@ -540,9 +540,23 @@ void PPU::render_normal_sprite(int i)
 		tile_number %= 1024;
 		u32 tileset_base = 0x10000;
 
-		GET_PALETTE_OFFSET;
+#define GET_PALETTE_OFFSET_SPRITE \
+		u32 tile_offset;\
+		int palette_offset;\
+		int palette_number;\
+		\
+		if (color_8) {\
+			tile_offset = tileset_base + (u32)tile_number*32 + py*8 + px;\
+			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+		} else {\
+			tile_offset = (tileset_base + (u32)tile_number*32 + py*4 + px/2);\
+			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);\
+			palette_offset = palette_bank * 16 + palette_number;\
+		}
 
-		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
+		GET_PALETTE_OFFSET_SPRITE;
+
+		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
 
 		if (palette_number != 0) {
 			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
@@ -667,9 +681,9 @@ void PPU::render_affine_sprite(int i)
 		tile_number %= 1024;
 		u32 tileset_base = 0x10000;
 
-		GET_PALETTE_OFFSET;
+		GET_PALETTE_OFFSET_SPRITE;
 
-		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
+		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
 
 		if (palette_number != 0) {
 			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
