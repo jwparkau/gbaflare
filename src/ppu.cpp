@@ -317,9 +317,9 @@ void PPU::render_affine_bg(int bg, int priority)
 		int palette_offset;
 		int palette_number;
 		tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;\
-		palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+			      palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
 
-		u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
+			      u16 color_555 = readarr<u16>(palette_data, palette_offset *2);
 
 		if (palette_number != 0 && tile_offset < 0x10000) {
 			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
@@ -392,15 +392,15 @@ template void PPU::do_bg_mode<2>();
 
 #define BITMAP_BG_START \
 	int ly = LY();\
-	int bg = 2;\
-	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
-	int priority = GET_FLAG(bgcnt, BG_PRIORITY);
+int bg = 2;\
+u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
+int priority = GET_FLAG(bgcnt, BG_PRIORITY);
 
 #define BITMAP_GET_FRAME \
 	u8 *p = vram_data;\
-	if (DISPCNT() & LCD_FRAME) {\
-		p += 40_KiB;\
-	}
+if (DISPCNT() & LCD_FRAME) {\
+	p += 40_KiB;\
+}
 
 void PPU::copy_framebuffer_mode3()
 {
@@ -441,150 +441,244 @@ void PPU::copy_framebuffer_mode5()
 
 void PPU::render_sprites()
 {
-	int ly = LY();
-
 	for (int i = MAX_SPRITES - 1; i >= 0; i--) {
 		u16 attr0 = readarr<u16>(oam_data, i*8);
-		u16 attr1 = readarr<u16>(oam_data, i*8 + 2);
-		u16 attr2 = readarr<u16>(oam_data, i*8 + 4);
 
 		if (GET_FLAG(attr0, OBJ_DISABLE) && !GET_FLAG(attr0, OBJ_AFFINE)) {
 			continue;
 		}
 
-		bool is_affine = GET_FLAG(attr0, OBJ_AFFINE);
-		bool double_size = GET_FLAG(attr0, OBJ_DOUBLESIZE);
+		if (GET_FLAG(attr0, OBJ_AFFINE)) {
+			render_affine_sprite(i);
+		} else {
+			render_normal_sprite(i);
+		}
+	}
+}
 
-		int objx = GET_FLAG(attr1, OBJ_X);
-		int objy = GET_FLAG(attr0, OBJ_Y);
+void PPU::render_normal_sprite(int i)
+{
+	int ly = LY();
 
-		int shape = GET_FLAG(attr0, OBJ_SHAPE);
-		int size = GET_FLAG(attr1, OBJ_SIZE);
+	u16 attr0 = readarr<u16>(oam_data, i*8);
+	u16 attr1 = readarr<u16>(oam_data, i*8 + 2);
+	u16 attr2 = readarr<u16>(oam_data, i*8 + 4);
 
-		int obj_w = OBJ_REGULAR_WIDTH[shape][size];
-		int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
+	int objx = GET_FLAG(attr1, OBJ_X);
+	int objy = GET_FLAG(attr0, OBJ_Y);
 
-		int box_x, box_y, box_w, box_h;
+	int shape = GET_FLAG(attr0, OBJ_SHAPE);
+	int size = GET_FLAG(attr1, OBJ_SIZE);
 
-		box_x = objx;
-		box_y = objy;
-		box_w = obj_w;
-		box_h = obj_h;
+	int obj_w = OBJ_REGULAR_WIDTH[shape][size];
+	int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
 
-		if (is_affine && double_size) {
-			box_w *= 2;
-			box_h *= 2;
-			objx += obj_w / 2;
-			objy += obj_h / 2;
+	if (objx >= LCD_WIDTH) {
+		objx -= 512;
+	}
+	if (objy >= LCD_HEIGHT) {
+		objy -= 256;
+	}
+
+	if (!(objy <= ly && ly < objy + obj_h)) {
+		return;
+	}
+
+	int sprite_y = ly - objy;
+	if (GET_FLAG(attr1, OBJ_VFLIP)) {
+		sprite_y = obj_h - 1 - sprite_y;
+	}
+
+	int sprite_x = 0;
+
+	bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
+	int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
+	int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
+	int priority = GET_FLAG(attr2, OBJ_PRIORITY);
+
+	bool hflip = GET_FLAG(attr1, OBJ_HFLIP);
+
+	int j;
+	for (sprite_x = (hflip ? obj_w-1 : 0), j = objx; j < objx + obj_w; sprite_x += (hflip ? -1 : 1), j++) {
+		if (j >= LCD_WIDTH) {
+			break;
 		}
 
-		if (box_x >= LCD_WIDTH) {
-			box_x -= 512;
-			objx -= 512;
-		}
-		if (box_y >= LCD_HEIGHT) {
-			box_y -= 256;
-			objy -= 256;
-		}
-
-		if (!(box_y <= ly && ly < box_y + box_h)) {
+		if (j < 0) {
 			continue;
 		}
 
-		int sprite_y = ly - objy;
-		if (!is_affine && GET_FLAG(attr1, OBJ_VFLIP)) {
-			sprite_y = obj_h - 1 - sprite_y;
+		if (sprite_y < 0 || sprite_y >= obj_h) {
+			continue;
+		}
+		if (sprite_x < 0 || sprite_x >= obj_w) {
+			continue;
 		}
 
-		int sprite_x = box_x - objx;
+		int tx = sprite_x / 8;
+		int px = sprite_x % 8;
 
-		bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
-		int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
-		int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
-		int priority = GET_FLAG(attr2, OBJ_PRIORITY);
+		int ty = sprite_y / 8;
+		int py = sprite_y % 8;
 
-		bool hflip = GET_FLAG(attr1, OBJ_HFLIP) && !is_affine;
+		int tile_number;
 
-		u16 x0 = obj_w / 2;
-		u16 y0 = obj_h / 2;
-
-		u16 pa, pb, pc, pd;
-		u16 x2 = 0, y2 = 0;
-		if (is_affine) {
-			int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
-			u32 affine_base_addr = 0x20 * affine_index + 6;
-
-			pa = readarr<u16>(oam_data, affine_base_addr);
-			pb = readarr<u16>(oam_data, affine_base_addr+8);
-			pc = readarr<u16>(oam_data, affine_base_addr+16);
-			pd = readarr<u16>(oam_data, affine_base_addr+24);
-
-			x2 = (sprite_x-x0)*pa + (sprite_y-y0)*pb + (x0 << 8);
-			y2 = (sprite_x-x0)*pc + (sprite_y-y0)*pd + (y0 << 8);
-		}
-
-		int j;
-		for (sprite_x = (hflip ? box_w-1 : 0), j = box_x; j < box_x + box_w; sprite_x += (hflip ? -1 : 1), j++) {
-			if (j >= LCD_WIDTH) {
-				break;
-			}
-
-			if (is_affine) {
-				sprite_x = (s16)x2 >> 8;
-				sprite_y = (s16)y2 >> 8;
-
-				x2 += pa;
-				y2 += pc;
-			}
-
-			if (j < 0) {
-				continue;
-			}
-
-			if (sprite_y < 0 || sprite_y >= obj_h) {
-				continue;
-			}
-			if (sprite_x < 0 || sprite_x >= obj_w) {
-				continue;
-			}
-
-			int tx = sprite_x / 8;
-			int px = sprite_x % 8;
-
-			int ty = sprite_y / 8;
-			int py = sprite_y % 8;
-
-			int tile_number;
-
-			if (DISPCNT() & LCD_OBJ_DIM) {
-				if (color_8) {
-					tile_number = tile_start + ty*2*(obj_w/8) + 2*tx;
-				} else {
-					tile_number = tile_start + ty*(obj_w/8) + tx;
-				}
+		if (DISPCNT() & LCD_OBJ_DIM) {
+			if (color_8) {
+				tile_number = tile_start + ty*2*(obj_w/8) + 2*tx;
 			} else {
-				if (color_8) {
-					tile_number = tile_start + ty*32 + 2*tx;
-				} else {
-					tile_number = tile_start + ty*32 + tx;
-				}
+				tile_number = tile_start + ty*(obj_w/8) + tx;
 			}
+		} else {
+			if (color_8) {
+				tile_number = tile_start + ty*32 + 2*tx;
+			} else {
+				tile_number = tile_start + ty*32 + tx;
+			}
+		}
 
-			tile_number %= 1024;
-			u32 tileset_base = 0x10000;
+		tile_number %= 1024;
+		u32 tileset_base = 0x10000;
 
-			GET_PALETTE_OFFSET;
+		GET_PALETTE_OFFSET;
 
-			u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
+		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
 
-			if (palette_number != 0) {
-				pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
-				pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
+		if (palette_number != 0) {
+			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
+			pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
 
-				if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
-					obj_buffer[ly*LCD_WIDTH + j] = pixel;
-				}
+			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
+				obj_buffer[ly*LCD_WIDTH + j] = pixel;
 			}
 		}
 	}
+}
+
+void PPU::render_affine_sprite(int i)
+{
+	int ly = LY();
+
+	u16 attr0 = readarr<u16>(oam_data, i*8);
+	u16 attr1 = readarr<u16>(oam_data, i*8 + 2);
+	u16 attr2 = readarr<u16>(oam_data, i*8 + 4);
+
+	int objx = GET_FLAG(attr1, OBJ_X);
+	int objy = GET_FLAG(attr0, OBJ_Y);
+
+	int shape = GET_FLAG(attr0, OBJ_SHAPE);
+	int size = GET_FLAG(attr1, OBJ_SIZE);
+
+	int obj_w = OBJ_REGULAR_WIDTH[shape][size];
+	int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
+
+	int box_w;
+	int box_h;
+
+	bool double_size = GET_FLAG(attr0, OBJ_DOUBLESIZE);
+	if (double_size) {
+		box_w = obj_w * 2;
+		box_h = obj_h * 2;
+	} else {
+		box_w = obj_w;
+		box_h = obj_h;
+	}
+
+	if (objx >= LCD_WIDTH) {
+		objx -= 512;
+	}
+	if (objy >= LCD_HEIGHT) {
+		objy -= 256;
+	}
+
+	if (!(objy <= ly && ly < objy + box_h)) {
+		return;
+	}
+
+	bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
+	int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
+	int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
+	int priority = GET_FLAG(attr2, OBJ_PRIORITY);
+
+	int px0 = obj_w / 2;
+	int py0 = obj_h / 2;
+
+	int qx0 = objx + box_w / 2;
+	int qy0 = objy + box_h / 2;
+
+	int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
+	u32 affine_base_addr = 0x20 * affine_index + 6;
+
+	u16 pa = readarr<u16>(oam_data, affine_base_addr);
+	u16 pb = readarr<u16>(oam_data, affine_base_addr+8);
+	u16 pc = readarr<u16>(oam_data, affine_base_addr+16);
+	u16 pd = readarr<u16>(oam_data, affine_base_addr+24);
+
+	int half_w = box_w / 2;
+
+	u16 x2 = (-half_w)*pa + (ly-qy0)*pb + (px0 << 8);
+	u16 y2 = (-half_w)*pc + (ly-qy0)*pd + (py0 << 8);
+
+	int j;
+	for (j = qx0-half_w; j < qx0+half_w; j++) {
+		if (j >= LCD_WIDTH) {
+			break;
+		}
+
+		int sprite_x = (s16)x2 >> 8;
+		int sprite_y = (s16)y2 >> 8;
+
+		x2 += pa;
+		y2 += pc;
+
+		if (j < 0) {
+			continue;
+		}
+
+		if (sprite_y < 0 || sprite_y >= obj_h) {
+			continue;
+		}
+		if (sprite_x < 0 || sprite_x >= obj_w) {
+			continue;
+		}
+
+		int tx = sprite_x / 8;
+		int px = sprite_x % 8;
+
+		int ty = sprite_y / 8;
+		int py = sprite_y % 8;
+
+		int tile_number;
+
+		if (DISPCNT() & LCD_OBJ_DIM) {
+			if (color_8) {
+				tile_number = tile_start + ty*2*(obj_w/8) + 2*tx;
+			} else {
+				tile_number = tile_start + ty*(obj_w/8) + tx;
+			}
+		} else {
+			if (color_8) {
+				tile_number = tile_start + ty*32 + 2*tx;
+			} else {
+				tile_number = tile_start + ty*32 + tx;
+			}
+		}
+
+		tile_number %= 1024;
+		u32 tileset_base = 0x10000;
+
+		GET_PALETTE_OFFSET;
+
+		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset *2);
+
+		if (palette_number != 0) {
+			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
+			pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
+
+			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
+				obj_buffer[ly*LCD_WIDTH + j] = pixel;
+			}
+		}
+	}
+
 }

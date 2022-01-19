@@ -150,6 +150,8 @@ struct PPU {
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();
 	void render_sprites();
+	void render_normal_sprite(int i);
+	void render_affine_sprite(int i);
 
 	bool bg_is_enabled(int i);
 
