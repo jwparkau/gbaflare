@@ -10,6 +10,7 @@
 #include "platform.h"
 #include "timer.h"
 #include "scheduler.h"
+#include "dma.h"
 
 int main(int argc, char **argv)
 {
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
 
 	set_initial_memory_state();
 
-	//cpu.fakeboot();
+	cpu.fakeboot();
 	cpu.fetch();
 	cpu.fetch();
 
@@ -50,7 +51,11 @@ int main(int argc, char **argv)
 		}
 
 		while (cpu_cycles < next_event) {
-			cpu.step();
+			if (dma.dma_active) {
+				dma.step();
+			} else {
+				cpu.step();
+			}
 		}
 
 		start_event_processing();

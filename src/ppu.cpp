@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "platform.h"
 #include "scheduler.h"
+#include "dma.h"
 
 #include <utility>
 #include <algorithm>
@@ -55,7 +56,7 @@ void PPU::step()
 		case PPU_IN_DRAW:
 			if (cycles >= 960) {
 				ppu_mode = PPU_IN_HBLANK;
-				draw_scanline();
+				on_hblank();
 			}
 			break;
 		case PPU_IN_HBLANK:
@@ -63,10 +64,6 @@ void PPU::step()
 				if (LY() == 160) {
 					ppu_mode = PPU_IN_VBLANK;
 					on_vblank();
-					if (DISPSTAT() & LCD_VBLANK_IRQ) {
-						request_interrupt(IRQ_VBLANK);
-					}
-					DISPSTAT() |= LCD_VBLANK;
 				} else {
 					ppu_mode = PPU_IN_DRAW;
 				}
@@ -104,11 +101,23 @@ void PPU::step()
 
 void PPU::on_vblank()
 {
+	if (DISPSTAT() & LCD_VBLANK_IRQ) {
+		request_interrupt(IRQ_VBLANK);
+	}
+	DISPSTAT() |= LCD_VBLANK;
+
 	copy_affine_ref();
+	dma.on_vblank();
 	platform.handle_input();
 	io_write<u16>(IO_KEYINPUT, joypad_state);
 	platform.render(framebuffer);
 	vblank_flag += 1;
+}
+
+void PPU::on_hblank()
+{
+	draw_scanline();
+	dma.on_hblank();
 }
 
 void PPU::copy_affine_ref()

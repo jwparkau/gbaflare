@@ -21,6 +21,7 @@ target_sources(gbaflare PUBLIC
 	platform.cpp
 	timer.cpp
 	scheduler.cpp
+	dma.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

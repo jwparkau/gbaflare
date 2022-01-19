@@ -89,19 +89,19 @@ u8 Timer::on_read(addr_t addr)
 	return values[i] >> (addr % 2 * 8) & BITMASK(8);
 }
 
-void Timer::on_write(addr_t addr, u8 value)
+void Timer::on_write(addr_t addr, u8 old_value, u8 new_value)
 {
 	int i = (addr - IO_TM0CNT_L) / 4;
 
 	simulate_elapsed(cpu_cycles - last_timer_update);
 	last_timer_update = cpu_cycles;
 
-	if (!(TMCNT_H(i) & TIMER_ENABLED) && (value & TIMER_ENABLED)) {
+	if (!(old_value & TIMER_ENABLED) && (new_value & TIMER_ENABLED)) {
 		values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
 	}
 
-	if ((value & TIMER_ENABLED) && !(value & TIMER_COUNTUP)) {
-		u32 freq = timer_freq[value & TIMER_PRESCALE];
+	if ((new_value & TIMER_ENABLED) && !(new_value & TIMER_COUNTUP)) {
+		u32 freq = timer_freq[new_value & TIMER_PRESCALE];
 		schedule_after((0x10000 - values[i]) * freq);
 	}
 }

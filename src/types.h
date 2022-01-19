@@ -41,4 +41,6 @@ constexpr u32 BIT(u32 i) {
 	return 1 << i;
 }
 
+#define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
+
 #endif

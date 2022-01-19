@@ -111,7 +111,6 @@ struct pixel_info {
 #define OBJ_PALETTE_NUMBER_MASK BITMASK(4)
 #define OBJ_PALETTE_NUMBER_SHIFT 12
 
-#define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
@@ -143,6 +142,7 @@ struct PPU {
 
 	void draw_scanline();
 	void on_vblank();
+	void on_hblank();
 	template<u8 mode> void do_bg_mode();
 	void render_text_bg(int bg, int priority);
 	void render_affine_bg(int bg, int priority);

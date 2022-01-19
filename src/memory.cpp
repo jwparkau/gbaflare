@@ -1,6 +1,7 @@
 #include "memory.h"
 #include "timer.h"
 #include "ppu.h"
+#include "dma.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -262,7 +263,13 @@ static void mmio_write(addr_t addr, T data)
 			case IO_TM1CNT_H:
 			case IO_TM2CNT_H:
 			case IO_TM3CNT_H:
-				timer.on_write(addr + i, new_value);
+				timer.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_DMA0CNT_H + 1:
+			case IO_DMA1CNT_H + 1:
+			case IO_DMA2CNT_H + 1:
+			case IO_DMA3CNT_H + 1:
+				dma.on_write(addr + i, old_value, new_value);
 				break;
 		}
 

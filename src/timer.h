@@ -30,7 +30,7 @@ struct Timer {
 	void on_timer_overflow(int i);
 
 	u8 on_read(addr_t addr);
-	void on_write(addr_t addr, u8 value);
+	void on_write(addr_t addr, u8 old_value, u8 new_value);
 };
 
 extern Timer timer;
