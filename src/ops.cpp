@@ -77,8 +77,3 @@ u32 lsl(u32 x, u32 n, bool &carry)
 	carry = x & BIT(32 - n);
 	return x << n;
 }
-
-u32 align(u32 addr, u32 x)
-{
-	return addr / x * x;
-}

@@ -41,6 +41,11 @@ constexpr u32 BIT(u32 i) {
 	return 1 << i;
 }
 
+inline u32 align(u32 addr, u32 x)
+{
+	return addr / x * x;
+}
+
 #define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 
 #endif

@@ -108,6 +108,11 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 			sad &= BITMASK(28);
 		}
 
+		u16 cnt_h = get_cnt_h(ch);
+		int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
+		sad = align(sad, width);
+		dad = align(dad, width);
+
 		transfers[ch] = {sad, dad, cnt_l, 0};
 
 		if (GET_FLAG(new_value << 8, DMA_TRIGGER) == 0) {

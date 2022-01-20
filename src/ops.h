@@ -9,8 +9,6 @@ u32 lsr(u32 x, u32 n, bool &carry);
 u32 lsl(u32 x, u32 n, bool &carry);
 u32 rrx(u32 x, bool &carry);
 
-u32 align(u32 addr, u32 x);
-
 #define WRITE_PC(x) \
 cpu.pc = (x);\
 cpu.flush_pipeline();
