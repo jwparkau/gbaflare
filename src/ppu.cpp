@@ -24,8 +24,8 @@ static const u8 OBJ_REGULAR_HEIGHT[3][4] = {
 static const int BG_REGULAR_WIDTH[4] = {256, 512, 256, 512};
 static const int BG_REGULAR_HEIGHT[4] = {256, 256, 512, 512};
 
-/* affine bgs are always square */
-static const int BG_AFFINE_DIM[4] = {128, 256, 512, 1024};
+static const int BG_AFFINE_WIDTH[4] = {128, 256, 512, 1024};
+static const int BG_AFFINE_HEIGHT[4] = {128, 256, 512, 1024};
 
 PPU ppu;
 int vblank_flag;
@@ -183,6 +183,16 @@ void PPU::draw_scanline()
 	ref_y[1] += (s32)(s16)io_read<u16>(IO_BG2PD);
 }
 
+#define GET_BG_PROPERTIES(x) \
+	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
+	int screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);\
+	int w = x##_WIDTH[screen_size];\
+	int h = x##_HEIGHT[screen_size];\
+	int sbb = GET_FLAG(bgcnt, BG_SBB);\
+	int cbb = GET_FLAG(bgcnt, BG_CBB);\
+	u32 tilemap_base = sbb * 2_KiB;\
+	u32 tileset_base = cbb * 16_KiB;
+
 #define GET_PALETTE_OFFSET(x) \
 	u32 tile_offset;\
 	int palette_offset;\
@@ -197,20 +207,22 @@ void PPU::draw_scanline()
 	}
 
 #define GET_PALETTE_OFFSET_SPRITE GET_PALETTE_OFFSET(32)
-#define GET_PALETTE_OFFSET_BACKGROUND GET_PALETTE_OFFSET(64)
+#define GET_PALETTE_OFFSET_BG_REGULAR GET_PALETTE_OFFSET(64)
+#define GET_PALETTE_OFFSET_BG_AFFINE GET_PALETTE_OFFSET(64);
+
+#define PUSH_BG_PIXEL \
+	u16 color_555 = readarr<u16>(palette_data, palette_offset*2);\
+	if (palette_number != 0 && tile_offset < 0x10000) {\
+		pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};\
+		pixel_info other = bufferA[i*LCD_WIDTH + j];\
+		if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {\
+			bufferA[i*LCD_WIDTH + j] = pixel;\
+		}\
+	}
 
 void PPU::render_text_bg(int bg, int priority)
 {
-	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-
-	int screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);
-	int w = BG_REGULAR_WIDTH[screen_size];
-	int h = BG_REGULAR_HEIGHT[screen_size];
-
-	int sbb = GET_FLAG(bgcnt, BG_SBB);
-	int cbb = GET_FLAG(bgcnt, BG_CBB);
-	u32 tilemap_base = sbb * 2_KiB;
-	u32 tileset_base = cbb * 16_KiB;
+	GET_BG_PROPERTIES(BG_REGULAR);
 
 	u16 dx = io_read<u16>(IO_BG0HOFS + bg*4);
 	u16 dy = io_read<u16>(IO_BG0VOFS + bg*4);
@@ -246,35 +258,15 @@ void PPU::render_text_bg(int bg, int priority)
 		int tile_number = GET_FLAG(se, SE_TILENUMBER);
 		int palette_bank = GET_FLAG(se, SE_PALETTE_NUMBER);
 
-		GET_PALETTE_OFFSET_BACKGROUND;
+		GET_PALETTE_OFFSET_BG_REGULAR;
 
-		u16 color_555 = readarr<u16>(palette_data, palette_offset*2);
-
-		if (palette_number != 0 && tile_offset < 0x10000) {
-			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
-			pixel_info other = bufferA[i*LCD_WIDTH + j];
-
-			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
-				bufferA[i*LCD_WIDTH + j] = pixel;
-			}
-		}
+		PUSH_BG_PIXEL;
 	}
 }
 
 void PPU::render_affine_bg(int bg, int priority)
 {
-	int ly = LY();
-
-	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
-
-	int screen_size = GET_FLAG(bgcnt, BG_SCREEN_SIZE);
-	int w = BG_AFFINE_DIM[screen_size];
-	int h = BG_AFFINE_DIM[screen_size];
-
-	int sbb = GET_FLAG(bgcnt, BG_SBB);
-	int cbb = GET_FLAG(bgcnt, BG_CBB);
-	u32 tilemap_base = sbb * 2_KiB;
-	u32 tileset_base = cbb * 16_KiB;
+	GET_BG_PROPERTIES(BG_AFFINE);
 
 	bool affine_wrap = GET_FLAG(bgcnt, BG_OVERFLOW);
 
@@ -284,9 +276,11 @@ void PPU::render_affine_bg(int bg, int priority)
 	u32 x2 = ref_x[bg-2];
 	u32 y2 = ref_y[bg-2];
 
-	int i = ly;
-	int j;
-	for (j = 0; j < w; j++) {
+	int palette_bank = 0;
+	bool color_8 = true;
+
+	int i = LY();
+	for (int j = 0; j < w; j++) {
 		if (j >= LCD_WIDTH) {
 			break;
 		}
@@ -315,22 +309,9 @@ void PPU::render_affine_bg(int bg, int priority)
 		u32 se_offset = tilemap_base + ty*(w/8) + tx;
 		int tile_number = readarr<u8>(vram_data, se_offset);
 
-		u32 tile_offset;
-		int palette_offset;
-		int palette_number;
-		tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;
-		palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);
+		GET_PALETTE_OFFSET_BG_AFFINE;
 
-		u16 color_555 = readarr<u16>(palette_data, palette_offset*2);
-
-		if (palette_number != 0 && tile_offset < 0x10000) {
-			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};
-			pixel_info other = bufferA[i*LCD_WIDTH + j];
-
-			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
-				bufferA[i*LCD_WIDTH + j] = pixel;
-			}
-		}
+		PUSH_BG_PIXEL;
 	}
 }
 
