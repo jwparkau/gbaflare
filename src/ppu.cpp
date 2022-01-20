@@ -183,6 +183,22 @@ void PPU::draw_scanline()
 	ref_y[1] += (s32)(s16)io_read<u16>(IO_BG2PD);
 }
 
+#define GET_PALETTE_OFFSET(x) \
+	u32 tile_offset;\
+	int palette_offset;\
+	int palette_number;\
+	if (color_8) {\
+		tile_offset = tileset_base + (u32)tile_number*(x) + py*8 + px;\
+		palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
+	} else {\
+		tile_offset = (tileset_base + (u32)tile_number*32 + py*4 + px/2);\
+		palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);\
+		palette_offset = palette_bank * 16 + palette_number;\
+	}
+
+#define GET_PALETTE_OFFSET_SPRITE GET_PALETTE_OFFSET(32)
+#define GET_PALETTE_OFFSET_BACKGROUND GET_PALETTE_OFFSET(64)
+
 void PPU::render_text_bg(int bg, int priority)
 {
 	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);
@@ -230,21 +246,7 @@ void PPU::render_text_bg(int bg, int priority)
 		int tile_number = GET_FLAG(se, SE_TILENUMBER);
 		int palette_bank = GET_FLAG(se, SE_PALETTE_NUMBER);
 
-#define GET_PALETTE_OFFSET \
-		u32 tile_offset;\
-		int palette_offset;\
-		int palette_number;\
-		\
-		if (color_8) {\
-			tile_offset = tileset_base + (u32)tile_number*64 + py*8 + px;\
-			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
-		} else {\
-			tile_offset = (tileset_base + (u32)tile_number*32 + py*4 + px/2);\
-			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);\
-			palette_offset = palette_bank * 16 + palette_number;\
-		}
-
-		GET_PALETTE_OFFSET;
+		GET_PALETTE_OFFSET_BACKGROUND;
 
 		u16 color_555 = readarr<u16>(palette_data, palette_offset*2);
 
@@ -449,14 +451,14 @@ void PPU::render_sprites()
 		}
 
 		if (GET_FLAG(attr0, OBJ_AFFINE)) {
-			render_affine_sprite(i);
+			render_sprite<true>(i);
 		} else {
-			render_normal_sprite(i);
+			render_sprite<false>(i);
 		}
 	}
 }
 
-void PPU::render_normal_sprite(int i)
+template <bool is_affine> void PPU::render_sprite(int i)
 {
 	int ly = LY();
 
@@ -473,129 +475,14 @@ void PPU::render_normal_sprite(int i)
 	int obj_w = OBJ_REGULAR_WIDTH[shape][size];
 	int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
 
-	if (objx >= LCD_WIDTH) {
-		objx -= 512;
-	}
-	if (objy >= LCD_HEIGHT) {
-		objy -= 256;
-	}
+	int box_w = obj_w;
+	int box_h = obj_h;
 
-	if (!(objy <= ly && ly < objy + obj_h)) {
-		return;
-	}
-
-	int sprite_y = ly - objy;
-	if (GET_FLAG(attr1, OBJ_VFLIP)) {
-		sprite_y = obj_h - 1 - sprite_y;
-	}
-
-	int sprite_x = 0;
-
-	bool color_8 = GET_FLAG(attr0, OBJ_PALETTE);
-	int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
-	int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
-	int priority = GET_FLAG(attr2, OBJ_PRIORITY);
-
-	bool hflip = GET_FLAG(attr1, OBJ_HFLIP);
-
-	int j;
-	for (sprite_x = (hflip ? obj_w-1 : 0), j = objx; j < objx + obj_w; sprite_x += (hflip ? -1 : 1), j++) {
-		if (j >= LCD_WIDTH) {
-			break;
+	if constexpr (is_affine) {
+		if (GET_FLAG(attr0, OBJ_DOUBLESIZE)) {
+			box_w *= 2;
+			box_h *= 2;
 		}
-
-		if (j < 0) {
-			continue;
-		}
-
-		if (sprite_y < 0 || sprite_y >= obj_h) {
-			continue;
-		}
-		if (sprite_x < 0 || sprite_x >= obj_w) {
-			continue;
-		}
-
-		int tx = sprite_x / 8;
-		int px = sprite_x % 8;
-
-		int ty = sprite_y / 8;
-		int py = sprite_y % 8;
-
-		int tile_number;
-
-		if (DISPCNT() & LCD_OBJ_DIM) {
-			if (color_8) {
-				tile_number = tile_start + ty*2*(obj_w/8) + 2*tx;
-			} else {
-				tile_number = tile_start + ty*(obj_w/8) + tx;
-			}
-		} else {
-			if (color_8) {
-				tile_number = tile_start + ty*32 + 2*tx;
-			} else {
-				tile_number = tile_start + ty*32 + tx;
-			}
-		}
-
-		tile_number %= 1024;
-		u32 tileset_base = 0x10000;
-
-#define GET_PALETTE_OFFSET_SPRITE \
-		u32 tile_offset;\
-		int palette_offset;\
-		int palette_number;\
-		\
-		if (color_8) {\
-			tile_offset = tileset_base + (u32)tile_number*32 + py*8 + px;\
-			palette_offset = palette_number = readarr<u8>(vram_data, tile_offset);\
-		} else {\
-			tile_offset = (tileset_base + (u32)tile_number*32 + py*4 + px/2);\
-			palette_number = readarr<u8>(vram_data, tile_offset) >> (px%2*4) & BITMASK(4);\
-			palette_offset = palette_bank * 16 + palette_number;\
-		}
-
-		GET_PALETTE_OFFSET_SPRITE;
-
-		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
-
-		if (palette_number != 0) {
-			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
-			pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
-
-			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
-				obj_buffer[ly*LCD_WIDTH + j] = pixel;
-			}
-		}
-	}
-}
-
-void PPU::render_affine_sprite(int i)
-{
-	int ly = LY();
-
-	u16 attr0 = readarr<u16>(oam_data, i*8);
-	u16 attr1 = readarr<u16>(oam_data, i*8 + 2);
-	u16 attr2 = readarr<u16>(oam_data, i*8 + 4);
-
-	int objx = GET_FLAG(attr1, OBJ_X);
-	int objy = GET_FLAG(attr0, OBJ_Y);
-
-	int shape = GET_FLAG(attr0, OBJ_SHAPE);
-	int size = GET_FLAG(attr1, OBJ_SIZE);
-
-	int obj_w = OBJ_REGULAR_WIDTH[shape][size];
-	int obj_h = OBJ_REGULAR_HEIGHT[shape][size];
-
-	int box_w;
-	int box_h;
-
-	bool double_size = GET_FLAG(attr0, OBJ_DOUBLESIZE);
-	if (double_size) {
-		box_w = obj_w * 2;
-		box_h = obj_h * 2;
-	} else {
-		box_w = obj_w;
-		box_h = obj_h;
 	}
 
 	if (objx >= LCD_WIDTH) {
@@ -620,30 +507,52 @@ void PPU::render_affine_sprite(int i)
 	int qx0 = objx + box_w / 2;
 	int qy0 = objy + box_h / 2;
 
-	int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
-	u32 affine_base_addr = 0x20 * affine_index + 6;
-
-	u16 pa = readarr<u16>(oam_data, affine_base_addr);
-	u16 pb = readarr<u16>(oam_data, affine_base_addr+8);
-	u16 pc = readarr<u16>(oam_data, affine_base_addr+16);
-	u16 pd = readarr<u16>(oam_data, affine_base_addr+24);
-
 	int half_w = box_w / 2;
 
-	u16 x2 = (-half_w)*pa + (ly-qy0)*pb + (px0 << 8);
-	u16 y2 = (-half_w)*pc + (ly-qy0)*pd + (py0 << 8);
+	int sprite_x, sprite_y;
+	u16 x2, y2;
+	u16 pa, pc;
 
-	int j;
-	for (j = qx0-half_w; j < qx0+half_w; j++) {
+	int offset = 0;
+
+	if constexpr (!is_affine) {
+		sprite_y = ly - objy;
+		if (GET_FLAG(attr1, OBJ_VFLIP)) {
+			sprite_y = obj_h - 1 - sprite_y;
+		}
+		if (GET_FLAG(attr1, OBJ_HFLIP)) {
+			sprite_x = obj_w - 1;
+			offset = -1;
+		} else {
+			sprite_x = 0;
+			offset = 1;
+		}
+	}
+
+	if constexpr (is_affine) {
+		int affine_index = GET_FLAG(attr1, OBJ_AFFINE_PARAMETER);
+		u32 affine_base_addr = 0x20 * affine_index + 6;
+		pa = readarr<u16>(oam_data, affine_base_addr);
+		u16 pb = readarr<u16>(oam_data, affine_base_addr+8);
+		pc = readarr<u16>(oam_data, affine_base_addr+16);
+		u16 pd = readarr<u16>(oam_data, affine_base_addr+24);
+
+		x2 = (-half_w)*pa + (ly-qy0)*pb + (px0 << 8);
+		y2 = (-half_w)*pc + (ly-qy0)*pd + (py0 << 8);
+	}
+
+	for (int j = qx0-half_w; j < qx0+half_w; j++, sprite_x += offset) {
 		if (j >= LCD_WIDTH) {
 			break;
 		}
 
-		int sprite_x = (s16)x2 >> 8;
-		int sprite_y = (s16)y2 >> 8;
+		if constexpr (is_affine) {
+			sprite_x = (s16)x2 >> 8;
+			sprite_y = (s16)y2 >> 8;
 
-		x2 += pa;
-		y2 += pc;
+			x2 += pa;
+			y2 += pc;
+		}
 
 		if (j < 0) {
 			continue;
@@ -694,5 +603,6 @@ void PPU::render_affine_sprite(int i)
 			}
 		}
 	}
-
 }
+template void PPU::render_sprite<true>(int i);
+template void PPU::render_sprite<false>(int i);
