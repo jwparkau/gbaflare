@@ -141,6 +141,10 @@ void PPU::draw_scanline()
 
 	u16 dispcnt = io_read<u16>(IO_DISPCNT);
 
+	if (dispcnt & LCD_OBJ) {
+		render_sprites();
+	}
+
 	int bg_mode = dispcnt & LCD_BGMODE;
 
 	switch (bg_mode) {
@@ -164,10 +168,6 @@ void PPU::draw_scanline()
 			break;
 		default:
 			return;
-	}
-
-	if (dispcnt & LCD_OBJ) {
-		render_sprites();
 	}
 
 	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
@@ -394,15 +394,15 @@ template void PPU::do_bg_mode<2>();
 
 #define BITMAP_BG_START \
 	int ly = LY();\
-int bg = 2;\
-u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
-int priority = GET_FLAG(bgcnt, BG_PRIORITY);
+	int bg = 2;\
+	u16 bgcnt = io_read<u16>(IO_BG0CNT + bg*2);\
+	int priority = GET_FLAG(bgcnt, BG_PRIORITY);
 
 #define BITMAP_GET_FRAME \
 	u8 *p = vram_data;\
-if (DISPCNT() & LCD_FRAME) {\
-	p += 40_KiB;\
-}
+	if (DISPCNT() & LCD_FRAME) {\
+		p += 40_KiB;\
+	}
 
 void PPU::copy_framebuffer_mode3()
 {
