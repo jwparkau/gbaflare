@@ -111,6 +111,15 @@ struct pixel_info {
 #define OBJ_PALETTE_NUMBER_MASK BITMASK(4)
 #define OBJ_PALETTE_NUMBER_SHIFT 12
 
+#define WINDOW_RIGHT_MASK BITMASK(8)
+#define WINDOW_RIGHT_SHIFT 0
+#define WINDOW_BOTTOM_MASK BITMASK(8)
+#define WINDOW_BOTTOM_SHIFT 0
+#define WINDOW_LEFT_MASK BITMASK(8)
+#define WINDOW_LEFT_SHIFT 8
+#define WINDOW_TOP_MASK BITMASK(8)
+#define WINDOW_TOP_SHIFT 8
+
 
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
@@ -125,6 +134,15 @@ struct pixel_info {
 
 #define MIN_PRIO 4
 
+struct window_info {
+	int l;
+	int r;
+	int t;
+	int b;
+	bool enabled;
+	bool y_in_window;
+};
+
 struct PPU {
 	u16 framebuffer[FRAMEBUFFER_SIZE]{};
 	u32 cycles{};
@@ -133,6 +151,12 @@ struct PPU {
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
 	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};
+
+	window_info windows[2]{};
+	bool objwindow_enabled{};
+	bool winout_enabled{};
+	bool obj_window[LCD_WIDTH]{};
+
 
 	/* convert them to have 12 fractional bits */
 	u32 ref_x[2]{};
@@ -151,6 +175,9 @@ struct PPU {
 	void copy_framebuffer_mode5();
 	void render_sprites();
 	template<bool is_affine> void render_sprite(int i);
+
+	bool should_push_pixel(int bg, int x);
+	void check_window(int n, int x);
 
 	bool bg_is_enabled(int i);
 

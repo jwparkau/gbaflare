@@ -128,6 +128,23 @@ void PPU::copy_affine_ref()
 	ref_y[1] = (s32)(io_read<u32>(IO_BG3Y_L) << 4) >> 4;
 }
 
+#define SETUP_WINDOW(x) \
+	windows[x].enabled = false;\
+	if (dispcnt & (LCD_WINDOW0 * BIT(x))) {\
+		u16 winh = io_read<u16>(IO_WIN0H + 2*(x));\
+		windows[x].l = GET_FLAG(winh, WINDOW_LEFT);\
+		windows[x].r = GET_FLAG(winh, WINDOW_RIGHT);\
+		u16 winv = io_read<u16>(IO_WIN0V + 2*(x));\
+		int wt = windows[x].t = GET_FLAG(winv, WINDOW_TOP);\
+		int wb = windows[x].b = GET_FLAG(winv, WINDOW_BOTTOM);\
+		windows[x].enabled = true;\
+		if (wt <= wb) {\
+			windows[x].y_in_window = (wt <= ly && ly < wb);\
+		} else {\
+			windows[x].y_in_window = (wt <= ly || ly < wb);\
+		}\
+	}
+
 void PPU::draw_scanline()
 {
 	u16 backdrop = readarr<u16>(palette_data, 0);
@@ -140,6 +157,11 @@ void PPU::draw_scanline()
 	}
 
 	u16 dispcnt = io_read<u16>(IO_DISPCNT);
+
+	SETUP_WINDOW(0);
+	SETUP_WINDOW(1);
+	objwindow_enabled = dispcnt & LCD_OBJWINDOW;
+	winout_enabled = objwindow_enabled || windows[0].enabled || windows[1].enabled;
 
 	if (dispcnt & LCD_OBJ) {
 		render_sprites();
@@ -173,7 +195,9 @@ void PPU::draw_scanline()
 	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		framebuffer[i] = bufferA[i].color_555;
 		if (!obj_buffer[i].is_transparent && obj_buffer[i].layer != LAYER_BD && obj_buffer[i].priority <= bufferA[i].priority) {
-			framebuffer[i] = obj_buffer[i].color_555;
+			if (should_push_pixel(4, j)) {
+				framebuffer[i] = obj_buffer[i].color_555;
+			}
 		}
 	}
 
@@ -213,12 +237,44 @@ void PPU::draw_scanline()
 #define PUSH_BG_PIXEL \
 	u16 color_555 = readarr<u16>(palette_data, palette_offset*2);\
 	if (palette_number != 0 && tile_offset < 0x10000) {\
-		pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};\
-		pixel_info other = bufferA[i*LCD_WIDTH + j];\
-		if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {\
-			bufferA[i*LCD_WIDTH + j] = pixel;\
+		if (should_push_pixel(bg, j)) {\
+			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};\
+			pixel_info other = bufferA[i*LCD_WIDTH + j];\
+			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {\
+				bufferA[i*LCD_WIDTH + j] = pixel;\
+			}\
 		}\
 	}
+
+#define CHECK_WINDOW(k) \
+	if (windows[k].enabled && windows[k].y_in_window) {\
+		bool x_in_window;\
+		if (windows[k].l <= windows[k].r) {\
+			x_in_window = (windows[k].l <= x && x < windows[k].r);\
+		} else {\
+			x_in_window = (windows[k].l <= x || x < windows[k].r);\
+		}\
+		if (x_in_window) {\
+			return io_data[IO_WININ - IO_START + (k)] & BIT(bg);\
+		}\
+	}
+
+
+bool PPU::should_push_pixel(int bg, int x)
+{
+	if (!winout_enabled) {
+		return true;
+	}
+
+	CHECK_WINDOW(0);
+	CHECK_WINDOW(1);
+
+	if (objwindow_enabled && obj_window[x]) {
+		return io_data[IO_WINOUT -  IO_START + 1] & BIT(bg);
+	}
+
+	return io_data[IO_WINOUT - IO_START] & BIT(bg);
+}
 
 void PPU::render_text_bg(int bg, int priority)
 {
@@ -576,12 +632,17 @@ template <bool is_affine> void PPU::render_sprite(int i)
 		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
 
 		if (palette_number != 0) {
-			pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
-			pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
+			if (GET_FLAG(attr0, OBJ_MODE) == 0x2) {
+				obj_window[j] = true;
+			} else {
+				pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
+				pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
 
-			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
-				obj_buffer[ly*LCD_WIDTH + j] = pixel;
+				if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
+					obj_buffer[ly*LCD_WIDTH + j] = pixel;
+				}
 			}
+
 		}
 	}
 }
