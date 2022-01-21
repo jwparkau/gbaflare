@@ -5,7 +5,7 @@
 #include <bit>
 #include <iostream>
 
-static const int sad_offset[4] = {1, -1, 0, 0}; // last value is invalid but dont want to segfault
+static const int sad_offset[4] = {1, -1, 0, 1}; // last value is invalid but dont want to segfault
 static const int dad_offset[4] = {1, -1, 0, 1};
 
 DMA dma;
@@ -43,6 +43,7 @@ void DMA::step_channel(int ch)
 	t.count++;
 
 	if (t.count >= t.cnt_l) {
+		t.count = 0;
 		if (GET_FLAG(cnt_h, DMA_SEND_IRQ)) {
 			request_interrupt(IRQ_DMA0 * BIT(ch));
 		}
@@ -95,7 +96,7 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 {
 	//printf("DMA write %02X for channel %d\n", new_value, (addr - IO_DMA0CNT_H) / 0xC);
 
-	int ch = (addr - IO_DMA0CNT_H) / 12;
+	int ch = (addr - IO_DMA0CNT_H - 1) / 12;
 
 	if (GET_FLAG(new_value << 8, DMA_ENABLED) && !GET_FLAG(old_value << 8, DMA_ENABLED)) {
 		u32 sad = io_read<u32>(IO_DMA0SAD + ch*12);
