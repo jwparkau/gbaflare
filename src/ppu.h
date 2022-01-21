@@ -44,12 +44,21 @@ enum render_layers {
 	LAYER_BD
 };
 
+enum blend_effects {
+	BLEND_NONE,
+	BLEND_ALPHA,
+	BLEND_INC,
+	BLEND_DEC
+};
+
 struct pixel_info {
 	u16 color_555;
 	int priority;
 	int bg;
 	bool is_transparent;
 	int layer;
+	int enable_blending;
+	bool force_alpha;
 };
 
 #define BG_PRIORITY_MASK BITMASK(2)
@@ -120,6 +129,23 @@ struct pixel_info {
 #define WINDOW_TOP_MASK BITMASK(8)
 #define WINDOW_TOP_SHIFT 8
 
+#define BLEND_MODE_MASK BITMASK(2)
+#define BLEND_MODE_SHIFT 6
+
+#define BLEND_EVA_MASK BITMASK(5)
+#define BLEND_EVA_SHIFT 0
+#define BLEND_EVB_MASK BITMASK(5)
+#define BLEND_EVB_SHIFT 8
+#define BLEND_EVY_MASK BITMASK(5)
+#define BLEND_EVY_SHIFT 0
+
+#define COLOR_R_MASK BITMASK(5)
+#define COLOR_R_SHIFT 0
+#define COLOR_G_MASK BITMASK(5)
+#define COLOR_G_SHIFT 5
+#define COLOR_B_MASK BITMASK(5)
+#define COLOR_B_SHIFT 10
+
 
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
@@ -176,7 +202,7 @@ struct PPU {
 	void render_sprites();
 	template<bool is_affine> void render_sprite(int i);
 
-	bool should_push_pixel(int bg, int x);
+	bool should_push_pixel(int bg, int x, int &blend);
 	void check_window(int n, int x);
 
 	bool bg_is_enabled(int i);

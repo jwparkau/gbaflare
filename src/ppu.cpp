@@ -145,6 +145,32 @@ void PPU::copy_affine_ref()
 		}\
 	}
 
+#define DO_BLEND_ALPHA(x) \
+	aX = GET_FLAG(a.color_555, COLOR_##x);\
+	bX = GET_FLAG(b.color_555, COLOR_##x);\
+	nX = eva*aX/16 + evb*bX/16;\
+	if (nX > 31) {\
+		nX = 31;\
+	}\
+	SET_FLAG(result_color, COLOR_##x, nX);
+
+#define DO_BLEND_INC(x) \
+	aX = GET_FLAG(a.color_555, COLOR_##x);\
+	nX = aX + (31-aX)*evy/16;\
+	if (nX > 31) {\
+		nX = 31;\
+	}\
+	SET_FLAG(result_color, COLOR_##x, nX);
+
+#define DO_BLEND_DEC(x) \
+	aX = GET_FLAG(a.color_555, COLOR_##x);\
+	nX = aX - aX*evy/16;\
+	if (nX > 31) {\
+		nX = 31;\
+	}\
+	SET_FLAG(result_color, COLOR_##x, nX);
+
+
 void PPU::draw_scanline()
 {
 	u16 backdrop = readarr<u16>(palette_data, 0);
@@ -153,6 +179,7 @@ void PPU::draw_scanline()
 
 	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		bufferA[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
+		bufferB[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
 		obj_buffer[i] = {backdrop, MIN_PRIO, 0, false, LAYER_BD};
 	}
 
@@ -195,6 +222,7 @@ void PPU::draw_scanline()
 			return;
 	}
 
+	/*
 	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
 		framebuffer[i] = bufferA[i].color_555;
 		if (!obj_buffer[i].is_transparent && obj_buffer[i].layer != LAYER_BD && obj_buffer[i].priority <= bufferA[i].priority) {
@@ -202,6 +230,104 @@ void PPU::draw_scanline()
 				framebuffer[i] = obj_buffer[i].color_555;
 			}
 		}
+	}
+	*/
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+		int blend;
+		if (!obj_buffer[i].is_transparent && obj_buffer[i].layer != LAYER_BD && obj_buffer[i].priority <= bufferA[i].priority) {
+			if (should_push_pixel(4, j, blend)) {
+				obj_buffer[i].enable_blending = blend;
+				bufferB[i] = bufferA[i];
+				bufferA[i] = obj_buffer[i];
+			}
+		} else if (!obj_buffer[i].is_transparent && obj_buffer[i].layer != LAYER_BD && obj_buffer[i].priority <= bufferB[i].priority) {
+			if (should_push_pixel(4, j, blend)) {
+				obj_buffer[i].enable_blending = blend;
+				bufferB[i] = obj_buffer[i];
+			}
+		}
+	}
+
+	u16 blendcnt = io_read<u16>(IO_BLDCNT);
+	int blend_mode = GET_FLAG(blendcnt, BLEND_MODE);
+
+	u16 blendalpha = io_read<u16>(IO_BLDALPHA);
+	int eva = GET_FLAG(blendalpha, BLEND_EVA);
+	int evb = GET_FLAG(blendalpha, BLEND_EVB);
+
+	u8 bldy = io_read<u8>(IO_BLDY);
+	int evy = GET_FLAG(bldy, BLEND_EVY);
+
+	if (eva > 16) {
+		eva = 16;
+	}
+	if (evb > 16) {
+		evb = 16;
+	}
+	if (evy > 16) {
+		evy = 16;
+	}
+
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++) {
+		u16 color_555;
+
+		int real_mode;
+		auto &a = bufferA[i];
+		auto &b = bufferB[i];
+
+		if (a.layer == LAYER_OBJ && a.force_alpha && !a.is_transparent && !b.is_transparent) {
+			real_mode = BLEND_ALPHA;
+		} else {
+			real_mode = blend_mode;
+		}
+		if (!a.enable_blending) {
+			real_mode = BLEND_NONE;
+		}
+
+		if (real_mode == BLEND_NONE) {
+			color_555 = a.color_555;
+		} else if (real_mode == BLEND_ALPHA) {
+			if (!a.is_transparent && !b.is_transparent && (blendcnt & BIT(a.layer) || (a.layer == LAYER_OBJ && a.force_alpha)) && (blendcnt & 256*BIT(b.layer))) {
+				u16 result_color = 0;
+				int nX, aX, bX;
+
+				DO_BLEND_ALPHA(R);
+				DO_BLEND_ALPHA(G);
+				DO_BLEND_ALPHA(B);
+
+				color_555 = result_color;
+			} else {
+				color_555 = a.color_555;
+			}
+		} else if (real_mode == BLEND_INC) {
+			if (!a.is_transparent && (blendcnt & BIT(a.layer))) {
+				u16 result_color = 0;
+				int nX, aX;
+
+				DO_BLEND_INC(R);
+				DO_BLEND_INC(G);
+				DO_BLEND_INC(B);
+
+				color_555 = result_color;
+			} else {
+				color_555 = a.color_555;
+			}
+		} else {
+			if (!a.is_transparent && (blendcnt & BIT(a.layer))) {
+				u16 result_color = 0;
+				int nX, aX;
+
+				DO_BLEND_DEC(R);
+				DO_BLEND_DEC(G);
+				DO_BLEND_DEC(B);
+
+				color_555 = result_color;
+			} else {
+				color_555 = a.color_555;
+			}
+		}
+
+		framebuffer[i] = color_555;
 	}
 
 	ref_x[0] += (s32)(s16)io_read<u16>(IO_BG2PB);
@@ -240,11 +366,13 @@ void PPU::draw_scanline()
 #define PUSH_BG_PIXEL \
 	u16 color_555 = readarr<u16>(palette_data, palette_offset*2);\
 	if (palette_number != 0 && tile_offset < 0x10000) {\
-		if (should_push_pixel(bg, j)) {\
-			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg};\
+		int blend;\
+		if (should_push_pixel(bg, j, blend)) {\
+			pixel_info pixel{color_555, priority, bg, palette_number == 0, bg, blend};\
 			pixel_info other = bufferA[i*LCD_WIDTH + j];\
 			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {\
 				bufferA[i*LCD_WIDTH + j] = pixel;\
+				bufferB[i*LCD_WIDTH + j] = other;\
 			}\
 		}\
 	}
@@ -258,14 +386,17 @@ void PPU::draw_scanline()
 			x_in_window = (windows[k].l <= x || x < windows[k].r);\
 		}\
 		if (x_in_window) {\
-			return io_data[IO_WININ - IO_START + (k)] & BIT(bg);\
+			u8 wincnt = io_data[IO_WININ - IO_START + (k)];\
+			blend = wincnt & BIT(5);\
+			return wincnt & BIT(bg);\
 		}\
 	}
 
 
-bool PPU::should_push_pixel(int bg, int x)
+bool PPU::should_push_pixel(int bg, int x, int &blend)
 {
 	if (!winout_enabled) {
+		blend = 1;
 		return true;
 	}
 
@@ -273,9 +404,11 @@ bool PPU::should_push_pixel(int bg, int x)
 	CHECK_WINDOW(1);
 
 	if (objwindow_enabled && obj_window[x]) {
+		blend = io_data[IO_WINOUT -  IO_START + 1] & BIT(5);
 		return io_data[IO_WINOUT -  IO_START + 1] & BIT(bg);
 	}
 
+	blend = io_data[IO_WINOUT - IO_START] & BIT(5);
 	return io_data[IO_WINOUT - IO_START] & BIT(bg);
 }
 
@@ -540,6 +673,7 @@ template <bool is_affine> void PPU::render_sprite(int i)
 	int tile_start = GET_FLAG(attr2, OBJ_TILENUMBER);
 	int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
 	int priority = GET_FLAG(attr2, OBJ_PRIORITY);
+	int gfx_mode = GET_FLAG(attr0, OBJ_MODE);
 
 	int px0 = obj_w / 2;
 	int py0 = obj_h / 2;
@@ -635,10 +769,10 @@ template <bool is_affine> void PPU::render_sprite(int i)
 		u16 color_555 = readarr<u16>(palette_data, 0x200 + palette_offset*2);
 
 		if (palette_number != 0) {
-			if (GET_FLAG(attr0, OBJ_MODE) == 0x2) {
+			if (gfx_mode == 0x2) {
 				obj_window[j] = true;
 			} else {
-				pixel_info pixel{color_555, priority, i, false, LAYER_OBJ};
+				pixel_info pixel{color_555, priority, i, false, LAYER_OBJ, 0, gfx_mode == 1};
 				pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
 
 				if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {

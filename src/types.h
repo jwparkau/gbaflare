@@ -48,4 +48,6 @@ inline u32 align(u32 addr, u32 x)
 
 #define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 
+#define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
+
 #endif
