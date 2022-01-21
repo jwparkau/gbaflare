@@ -128,30 +128,22 @@ void PPU::on_hblank()
 	dma.on_hblank();
 }
 
-#define DO_BLEND_ALPHA(x) \
+#define DO_BLEND_GENERIC(x, e) \
 	aX = GET_FLAG(a.color, COLOR_##x);\
-	bX = GET_FLAG(b.color, COLOR_##x);\
-	nX = eva*aX/16 + evb*bX/16;\
-	if (nX > 31) {\
-		nX = 31;\
-	}\
-	SET_FLAG(result_color, COLOR_##x, nX);
+	nX = at_most((e), 31);\
+	SET_FLAG(color, COLOR_##x, nX);
 
-#define DO_BLEND_INC(x) \
-	aX = GET_FLAG(a.color, COLOR_##x);\
-	nX = aX + (31-aX)*evy/16;\
-	if (nX > 31) {\
-		nX = 31;\
-	}\
-	SET_FLAG(result_color, COLOR_##x, nX);
+#define DO_BLEND_ALPHA(x) DO_BLEND_GENERIC(x, eva*aX/16 + (GET_FLAG(b.color, COLOR_##x))*evb/16)
+#define DO_BLEND_INC(x) DO_BLEND_GENERIC(x, aX + (31-aX)*evy/16)
+#define DO_BLEND_DEC(x) DO_BLEND_GENERIC(x, aX - aX*evy/16)
 
-#define DO_BLEND_DEC(x) \
-	aX = GET_FLAG(a.color, COLOR_##x);\
-	nX = aX - aX*evy/16;\
-	if (nX > 31) {\
-		nX = 31;\
-	}\
-	SET_FLAG(result_color, COLOR_##x, nX);
+#define DO_BLEND(f) \
+	if (blend_mode == BLEND_##f) {\
+		int nX, aX;\
+		DO_BLEND_##f(R);\
+		DO_BLEND_##f(G);\
+		DO_BLEND_##f(B);\
+	}
 
 
 void PPU::draw_scanline()
@@ -217,7 +209,6 @@ void PPU::draw_scanline()
 	}
 
 	u16 blendcnt = io_read<u16>(IO_BLDCNT);
-	int blend_mode = GET_FLAG(blendcnt, BLEND_MODE);
 
 	u16 blendalpha = io_read<u16>(IO_BLDALPHA);
 	int eva = at_most(GET_FLAG(blendalpha, BLEND_EVA), 16);
@@ -226,66 +217,36 @@ void PPU::draw_scanline()
 	u8 bldy = io_read<u8>(IO_BLDY);
 	int evy = at_most(GET_FLAG(bldy, BLEND_EVY), 16);
 
-	for ITERATE_SCANLINE {
-		u16 color;
-
-		int real_mode;
+	u16 color;
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++, framebuffer[i] = color) {
 		auto &a = bufferA[i];
 		auto &b = bufferB[i];
 
-		if (a.layer == LAYER_OBJ && a.force_alpha && !a.is_transparent && !b.is_transparent) {
-			real_mode = BLEND_ALPHA;
+		color = a.color;
+
+		int blend_mode = GET_FLAG(blendcnt, BLEND_MODE);
+
+		if (!a.enable_blending)
+			continue;
+		if (a.is_transparent)
+			continue;
+
+		if (a.layer == LAYER_OBJ && a.force_alpha && !b.is_transparent) {
+			blend_mode = BLEND_ALPHA;
 		} else {
-			real_mode = blend_mode;
-		}
-		if (!a.enable_blending) {
-			real_mode = BLEND_NONE;
+			if (!(blendcnt & BIT(a.layer)))
+				continue;
 		}
 
-		if (real_mode == BLEND_NONE) {
-			color = a.color;
-		} else if (real_mode == BLEND_ALPHA) {
-			if (!a.is_transparent && !b.is_transparent && (blendcnt & BIT(a.layer) || (a.layer == LAYER_OBJ && a.force_alpha)) && (blendcnt & 256*BIT(b.layer))) {
-				u16 result_color = 0;
-				int nX, aX, bX;
+		if (blend_mode == BLEND_NONE)
+			continue;
 
-				DO_BLEND_ALPHA(R);
-				DO_BLEND_ALPHA(G);
-				DO_BLEND_ALPHA(B);
+		if (blend_mode == BLEND_ALPHA && (b.is_transparent || !(blendcnt & BIT(b.layer + 8))))
+			continue;
 
-				color = result_color;
-			} else {
-				color = a.color;
-			}
-		} else if (real_mode == BLEND_INC) {
-			if (!a.is_transparent && (blendcnt & BIT(a.layer))) {
-				u16 result_color = 0;
-				int nX, aX;
-
-				DO_BLEND_INC(R);
-				DO_BLEND_INC(G);
-				DO_BLEND_INC(B);
-
-				color = result_color;
-			} else {
-				color = a.color;
-			}
-		} else {
-			if (!a.is_transparent && (blendcnt & BIT(a.layer))) {
-				u16 result_color = 0;
-				int nX, aX;
-
-				DO_BLEND_DEC(R);
-				DO_BLEND_DEC(G);
-				DO_BLEND_DEC(B);
-
-				color = result_color;
-			} else {
-				color = a.color;
-			}
-		}
-
-		framebuffer[i] = color;
+		DO_BLEND(ALPHA);
+		DO_BLEND(INC);
+		DO_BLEND(DEC);
 	}
 
 	ref_x[0] += (s32)(s16)io_read<u16>(IO_BG2PB);
