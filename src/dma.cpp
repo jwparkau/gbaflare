@@ -103,7 +103,7 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 		u32 dad = load_dad(ch);
 		u32 cnt_l = load_cnt_l(ch);
 
-		if (ch == 1) {
+		if (ch == 0) {
 			sad &= BITMASK(27);
 		} else {
 			sad &= BITMASK(28);
