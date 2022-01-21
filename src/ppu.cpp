@@ -231,7 +231,7 @@ void PPU::draw_scanline()
 		if (a.is_transparent)
 			continue;
 
-		if (a.layer == LAYER_OBJ && a.force_alpha && !b.is_transparent) {
+		if (a.layer == LAYER_OBJ && a.force_alpha && !b.is_transparent && (blendcnt & BIT(b.layer + 8))) {
 			blend_mode = BLEND_ALPHA;
 		} else {
 			if (!(blendcnt & BIT(a.layer)))
