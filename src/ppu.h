@@ -4,7 +4,6 @@
 #include "types.h"
 
 enum io_dispcnt_flags {
-	LCD_BGMODE 	= 0x7,
 	LCD_RESERVED	= 0x8,
 	LCD_FRAME	= 0x10,
 	LCD_INTERVAL	= 0x20,
@@ -19,6 +18,8 @@ enum io_dispcnt_flags {
 	LCD_WINDOW1	= 0x4000,
 	LCD_OBJWINDOW	= 0x8000
 };
+#define LCD_BGMODE_MASK BITMASK(3)
+#define LCD_BGMODE_SHIFT 0
 
 enum io_dispstat_flags {
 	LCD_VBLANK	 = 0x1,
@@ -49,16 +50,6 @@ enum blend_effects {
 	BLEND_ALPHA,
 	BLEND_INC,
 	BLEND_DEC
-};
-
-struct pixel_info {
-	u16 color_555;
-	int priority;
-	int bg;
-	bool is_transparent;
-	int layer;
-	int enable_blending;
-	bool force_alpha;
 };
 
 #define BG_PRIORITY_MASK BITMASK(2)
@@ -159,6 +150,10 @@ struct pixel_info {
 #define MAX_SPRITES 128
 
 #define MIN_PRIO 4
+#define NOT_BG 0
+
+#define ITERATE_SCANLINE (u32 i = ly*LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++)
+#define ITERATE_LINE (int j = 0; j < LCD_WIDTH; j++)
 
 struct window_info {
 	int l;
@@ -169,11 +164,25 @@ struct window_info {
 	bool y_in_window;
 };
 
+struct pixel_info {
+	u16 color;
+	int priority;
+	int bg;
+	bool is_transparent;
+	int layer;
+	int enable_blending;
+	bool force_alpha;
+};
+
 struct PPU {
-	u16 framebuffer[FRAMEBUFFER_SIZE]{};
 	u32 cycles{};
 	ppu_modes ppu_mode = PPU_IN_DRAW;
 
+	int ly{};
+	u16 dispcnt{};
+
+
+	u16 framebuffer[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
 	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};
@@ -183,31 +192,31 @@ struct PPU {
 	bool winout_enabled{};
 	bool obj_window[LCD_WIDTH]{};
 
-
-	/* convert them to have 12 fractional bits */
 	u32 ref_x[2]{};
 	u32 ref_y[2]{};
 
 	void step();
-
-	void draw_scanline();
 	void on_vblank();
 	void on_hblank();
+
+	void draw_scanline();
+
 	template<u8 mode> void do_bg_mode();
 	void render_text_bg(int bg, int priority);
 	void render_affine_bg(int bg, int priority);
 	void copy_framebuffer_mode3();
 	void copy_framebuffer_mode4();
 	void copy_framebuffer_mode5();
+
 	void render_sprites();
 	template<bool is_affine> void render_sprite(int i);
 
+	bool bg_is_enabled(int i);
 	bool should_push_pixel(int bg, int x, int &blend);
 	void check_window(int n, int x);
-
-	bool bg_is_enabled(int i);
-
 	void copy_affine_ref();
+	void setup_windows();
+	void setup_window(int n);
 };
 
 extern PPU ppu;

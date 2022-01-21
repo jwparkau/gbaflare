@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "memory.h"
 
 #include <stdexcept>
 #include <iostream>
@@ -122,7 +123,7 @@ void Platform::handle_input()
 				break;
 		}
 	}
-
+	io_write<u16>(IO_KEYINPUT, joypad_state);
 }
 
 static void update_joypad(joypad_buttons button, bool down)

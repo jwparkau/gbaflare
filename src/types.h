@@ -46,8 +46,23 @@ inline u32 align(u32 addr, u32 x)
 	return addr / x * x;
 }
 
-#define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
+inline int min(int a, int b) {
+	return (a <= b) ? a : b;
+}
 
+inline int max(int a, int b) {
+	return (a >= b) ? a : b;
+}
+
+inline int at_least(int x, int n) {
+	return max(x, n);
+}
+
+inline int at_most(int x, int n) {
+	return min(x, n);
+}
+
+#define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 #define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
 
 #endif
