@@ -379,7 +379,7 @@ bool PPU::bg_is_enabled(int i)
 #define ADD_BACKGROUND(x) \
 	if (bg_is_enabled((x))) {\
 		priority = GET_FLAG(io_read<u8>(IO_BG0CNT + (x)*2), BG_PRIORITY);\
-		bgs_to_render.push_back(std::make_pair(priority, -(x)));\
+		bgs_to_render.push_back(std::make_pair(-priority, -(x)));\
 	}
 
 template<u8 mode> void PPU::do_bg_mode()
@@ -408,19 +408,19 @@ template<u8 mode> void PPU::do_bg_mode()
 
 	if constexpr (mode == 0) {
 		for (auto x : bgs_to_render) {
-			render_text_bg(-x.second, x.first);
+			render_text_bg(-x.second, -x.first);
 		}
 	} else if constexpr (mode == 1) {
 		for (auto x : bgs_to_render) {
 			if (-x.second < 2) {
-				render_text_bg(-x.second, x.first);
+				render_text_bg(-x.second, -x.first);
 			} else {
-				render_affine_bg(-x.second, x.first);
+				render_affine_bg(-x.second, -x.first);
 			}
 		}
 	} else if constexpr (mode == 2) {
 		for (auto x : bgs_to_render) {
-			render_affine_bg(-x.second, x.first);
+			render_affine_bg(-x.second, -x.first);
 		}
 	}
 }
