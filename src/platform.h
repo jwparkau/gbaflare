@@ -29,6 +29,7 @@ extern Platform platform;
 
 extern bool emulator_running;
 extern bool throttle_enabled;
+extern bool print_fps;
 
 extern u16 joypad_state;
 

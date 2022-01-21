@@ -7,6 +7,7 @@ Platform platform;
 bool emulator_running = false;
 u16 joypad_state = 0xFFFF;
 bool throttle_enabled = true;
+bool print_fps = false;
 
 enum joypad_buttons {
 	BUTTON_A,
@@ -110,6 +111,8 @@ void Platform::handle_input()
 
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_0) {
 			throttle_enabled ^= 1;
+		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_p) {
+			print_fps ^= 1;
 		}
 
 		switch (e.type) {
