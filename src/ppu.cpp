@@ -218,7 +218,7 @@ void PPU::draw_scanline()
 	int evy = at_most(GET_FLAG(bldy, BLEND_EVY), 16);
 
 	u16 color;
-	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; i++, j++, framebuffer[i] = color) {
+	for (u32 i = ly * LCD_WIDTH, j = 0; j < LCD_WIDTH; j++, framebuffer[i++] = color) {
 		auto &a = bufferA[i];
 		auto &b = bufferB[i];
 
