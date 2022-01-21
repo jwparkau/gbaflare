@@ -160,6 +160,9 @@ void PPU::draw_scanline()
 
 	SETUP_WINDOW(0);
 	SETUP_WINDOW(1);
+	for (int j = 0; j < LCD_WIDTH; j++) {
+		obj_window[j] = false;
+	}
 	objwindow_enabled = dispcnt & LCD_OBJWINDOW;
 	winout_enabled = objwindow_enabled || windows[0].enabled || windows[1].enabled;
 
