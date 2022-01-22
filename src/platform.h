@@ -1,36 +1,28 @@
 #ifndef GBAFLARE_PLATFORM_H
 #define GBAFLARE_PLATFORM_H
 
-#include <SDL2/SDL.h>
-
 #include "types.h"
 
-enum platform_error {
-	PLATFORM_INIT_SUCCESS,
-	PLATFORM_INIT_FAIL
-};
+#define LCD_WIDTH 240l
+#define LCD_HEIGHT 160l
+#define FRAMEBUFFER_SIZE 38400l
 
-struct Platform {
-	SDL_Window *window{};
-	SDL_Renderer *renderer{};
-	SDL_Texture *texture{};
-
-	const int width = 240;
-	const int height = 160;
-	const int scale_factor = 8;
-
-	int init();
-
-	void render(u16 *pixels);
-	void handle_input();
-};
-
-extern Platform platform;
+int platform_init();
+void platform_on_vblank();
 
 extern bool emulator_running;
 extern bool throttle_enabled;
 extern bool print_fps;
 
 extern u16 joypad_state;
+
+extern u16 framebuffer[FRAMEBUFFER_SIZE];
+
+
+#ifdef PLATFORM_USE_SDL2
+#include "platform_sdl.h"
+#endif
+
+extern Platform platform;
 
 #endif

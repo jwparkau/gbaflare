@@ -19,4 +19,12 @@ project(
 add_executable(gbaflare "")
 add_executable(gbaflare-release "")
 
+if (USE_SDL2)
+	message(STATUS "Using SDL2")
+	add_compile_definitions(PLATFORM_USE_SDL2)
+	find_package(SDL2 REQUIRED)
+	target_link_libraries(gbaflare SDL2::SDL2)
+	target_link_libraries(gbaflare-release SDL2::SDL2)
+endif()
+
 add_subdirectory(src)

@@ -7,8 +7,6 @@ set_target_properties(gbaflare
         CXX_EXTENSIONS NO
 )
 
-find_package(SDL2 REQUIRED)
-
 target_sources(gbaflare PUBLIC
 	main.cpp
 	cpu.cpp
@@ -28,7 +26,6 @@ target_include_directories(gbaflare PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(gbaflare SDL2::SDL2)
 
 target_compile_options(gbaflare-release PUBLIC -Wall -Wextra -Winline -O3)
 
@@ -39,8 +36,6 @@ set_target_properties(gbaflare-release
         CXX_EXTENSIONS NO
 )
 
-find_package(SDL2 REQUIRED)
-
 target_sources(gbaflare-release PUBLIC
 	release.cpp
 )
@@ -48,5 +43,3 @@ target_sources(gbaflare-release PUBLIC
 target_include_directories(gbaflare-release PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
-
-target_link_libraries(gbaflare-release SDL2::SDL2)

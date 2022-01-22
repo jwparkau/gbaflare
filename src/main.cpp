@@ -1,7 +1,7 @@
-#include <SDL2/SDL.h>
-
 #include <iostream>
 #include <memory>
+#include <chrono>
+#include <thread>
 
 #include "types.h"
 #include "cpu.h"
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 	load_bios_rom("../boot/gba_bios.bin");
 	load_cartridge_rom(argv[1]);
 
-	int err = platform.init();
+	int err = platform_init();
 	if (err) {
 		return EXIT_FAILURE;
 	}
@@ -41,9 +41,8 @@ int main(int argc, char **argv)
 
 	next_event = 960;
 
-	u64 tick_start = SDL_GetPerformanceCounter();
-	u64 freq = SDL_GetPerformanceFrequency();
-	u64 frame_duration = freq / 60.0;
+	auto tick_start = std::chrono::steady_clock::now();
+	std::chrono::duration<double> frame_duration(1.0 / 60);
 
 	for (;;) {
 		if (!emulator_running) {
@@ -66,17 +65,17 @@ int main(int argc, char **argv)
 		end_event_processing();
 
 		if (vblank_flag == 1) {
-			u64 ticks = SDL_GetPerformanceCounter() - tick_start;
+			std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
 			if (print_fps) {
-				printf("fps: %f\n", (double)freq / ticks);
+				printf("fps: %f\n", 1 / sec.count());
 			}
 
 			if (throttle_enabled) {
-				while (SDL_GetPerformanceCounter() < tick_start + frame_duration)
+				while (std::chrono::steady_clock::now() - tick_start < frame_duration)
 					;
 			}
 
-			tick_start = SDL_GetPerformanceCounter();
+			tick_start = std::chrono::steady_clock::now();
 			vblank_flag = 0;
 		}
 	}

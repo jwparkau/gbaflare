@@ -2,6 +2,7 @@
 #define GBAFLARE_PPU_H
 
 #include "types.h"
+#include "platform.h"
 
 enum io_dispcnt_flags {
 	LCD_RESERVED	= 0x8,
@@ -143,9 +144,6 @@ enum blend_effects {
 #define LYC() io_data[IO_DISPSTAT - IO_START + 1]
 #define DISPCNT() io_data[IO_DISPCNT - IO_START]
 
-#define LCD_WIDTH 240l
-#define LCD_HEIGHT 160l
-#define FRAMEBUFFER_SIZE LCD_WIDTH * LCD_HEIGHT
 
 #define MAX_SPRITES 128
 
@@ -181,8 +179,6 @@ struct PPU {
 	int ly{};
 	u16 dispcnt{};
 
-
-	u16 framebuffer[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
 	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};

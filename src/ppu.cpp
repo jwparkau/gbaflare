@@ -1,6 +1,5 @@
 #include "ppu.h"
 #include "memory.h"
-#include "platform.h"
 #include "scheduler.h"
 #include "dma.h"
 
@@ -108,8 +107,7 @@ void PPU::on_vblank()
 
 	dma.on_vblank();
 
-	platform.handle_input();
-	platform.render(framebuffer);
+	platform_on_vblank();
 
 	vblank_flag += 1;
 }
