@@ -109,14 +109,16 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 			sad &= BITMASK(28);
 		}
 
-		u16 cnt_h = get_cnt_h(ch);
+		u16 cnt_h = new_value << 8 | io_read<u8>(IO_DMA0CNT_H + ch*12);
 		int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
 		sad = align(sad, width);
 		dad = align(dad, width);
 
 		transfers[ch] = {sad, dad, cnt_l, 0};
 
+
 		if (GET_FLAG(new_value << 8, DMA_TRIGGER) == 0) {
+			//printf("ch %d, %08X -> %08X, %d count, cnt_h %04X, old %02X, new %02X\n", ch, sad, dad, cnt_l, cnt_h, old_value, new_value);
 			dma_active |= BIT(ch);
 		}
 	} else if (!GET_FLAG(new_value << 8, DMA_ENABLED) && GET_FLAG(old_value << 8, DMA_ENABLED)) {
