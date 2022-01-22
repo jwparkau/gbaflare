@@ -2,6 +2,7 @@
 #include "timer.h"
 #include "ppu.h"
 #include "dma.h"
+#include "cpu.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -14,6 +15,8 @@ u8 palette_data[PALETTE_RAM_SIZE];
 u8 vram_data[VRAM_SIZE];
 u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
+
+u32 last_bios_opcode;
 
 static u8 *const region_to_data[9] = {
 	bios_data,
@@ -163,6 +166,12 @@ static T read(addr_t addr)
 		return mmio_read<T>(addr);
 	}
 
+	if (region == MemoryRegion::BIOS) {
+		if (cpu.pc - 8 >= BIOS_END) {
+			return last_bios_opcode;
+		}
+	}
+
 	return readarr<T>(arr, offset);
 }
 
@@ -190,6 +199,25 @@ static void write(addr_t addr, T data)
 	if (region == MemoryRegion::IO) {
 		mmio_write<T>(addr, data);
 		return;
+	}
+
+	if constexpr (sizeof(T) == sizeof(u8)) {
+		if (region == MemoryRegion::OAM)
+			return;
+
+		if (region == MemoryRegion::VRAM) {
+			if (!in_vram_bg(offset)) {
+				return;
+			} else {
+				writearr<u16>(arr, align(offset, 2), data * 0x101);
+				return;
+			}
+		}
+
+		if (region == MemoryRegion::PALETTE_RAM) {
+			writearr<u16>(arr, align(offset, 2), data * 0x101);
+			return;
+		}
 	}
 
 	writearr<T>(arr, offset, data);
@@ -314,4 +342,13 @@ void Memory::write16(addr_t addr, u16 data)
 void Memory::write8(addr_t addr, u8 data)
 {
 	write<u8>(addr, data);
+}
+
+bool in_vram_bg(u32 offset) {
+	bool bitmap_mode = (io_data[0] & 0x7) >= 3;
+	if (bitmap_mode) {
+		return offset < 0x14000;
+	} else {
+		return offset < 0x10000;
+	}
 }

@@ -144,6 +144,9 @@ bool Cpu::cond_triggered(u32 cond)
 void Cpu::arm_execute()
 {
 	u32 op = cpu_read32(pc - 8);
+	if (pc < BIOS_END) {
+		last_bios_opcode = readarr<u32>(bios_data, pc);
+	}
 
 #ifdef DEBUG
 	if (debug) {

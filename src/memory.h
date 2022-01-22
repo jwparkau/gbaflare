@@ -135,6 +135,8 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 
+extern u32 last_bios_opcode;
+
 void request_interrupt(u16 flag);
 
 u32 resolve_memory_address(addr_t addr, MemoryRegion &region);
@@ -143,6 +145,8 @@ void load_bios_rom(const char *filename);
 void load_cartridge_rom(const char *filename);
 
 void set_initial_memory_state();
+
+bool in_vram_bg(addr_t addr);
 
 namespace Memory {
 	u32 read32(addr_t addr);
