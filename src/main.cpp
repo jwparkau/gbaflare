@@ -1,7 +1,5 @@
 #include <iostream>
 #include <memory>
-#include <chrono>
-#include <thread>
 
 #include "types.h"
 #include "cpu.h"
@@ -41,8 +39,7 @@ int main(int argc, char **argv)
 
 	next_event = 960;
 
-	auto tick_start = std::chrono::steady_clock::now();
-	std::chrono::duration<double> frame_duration(1.0 / 60);
+	platform_on_vblank();
 
 	for (;;) {
 		if (!emulator_running) {
@@ -63,21 +60,6 @@ int main(int argc, char **argv)
 		ppu.step();
 
 		end_event_processing();
-
-		if (vblank_flag == 1) {
-			std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
-			if (print_fps) {
-				printf("fps: %f\n", 1 / sec.count());
-			}
-
-			if (throttle_enabled) {
-				while (std::chrono::steady_clock::now() - tick_start < frame_duration)
-					;
-			}
-
-			tick_start = std::chrono::steady_clock::now();
-			vblank_flag = 0;
-		}
 	}
 
 	return 0;

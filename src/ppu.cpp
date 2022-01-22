@@ -27,7 +27,6 @@ static const int BG_AFFINE_WIDTH[4] = {128, 256, 512, 1024};
 static const int BG_AFFINE_HEIGHT[4] = {128, 256, 512, 1024};
 
 PPU ppu;
-int vblank_flag;
 
 #define SET_AND_REQ_IRQ(x) \
 	if (DISPSTAT() & LCD_##x##_IRQ) {\
@@ -108,8 +107,6 @@ void PPU::on_vblank()
 	dma.on_vblank();
 
 	platform_on_vblank();
-
-	vblank_flag += 1;
 }
 
 void PPU::copy_affine_ref()
