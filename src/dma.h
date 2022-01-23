@@ -52,6 +52,8 @@ struct DMA {
 	u16 get_cnt_h(int ch);
 	u32 load_cnt_l(int ch);
 	u32 load_dad(int ch);
+
+	DECLARE_READ_WRITE;
 };
 
 extern DMA dma;

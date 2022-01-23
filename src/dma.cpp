@@ -28,11 +28,11 @@ void DMA::step_channel(int ch)
 	int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
 
 	if (width == 4) {
-		x = Memory::read32(t.sad);
-		Memory::write32(t.dad, x);
+		x = read32(t.sad);
+		write32(t.dad, x);
 	} else {
-		x = Memory::read16(t.sad);
-		Memory::write16(t.dad, x);
+		x = read16(t.sad);
+		write16(t.dad, x);
 	}
 
 	int destcnt = GET_FLAG(cnt_h, DMA_DESTCNT);
@@ -150,3 +150,5 @@ u16 DMA::get_cnt_h(int ch)
 {
 	return io_read<u16>(IO_DMA0CNT_H + ch*12);
 }
+
+DEFINE_READ_WRITE(DMA)

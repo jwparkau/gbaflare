@@ -1,7 +1,4 @@
 #include "memory.h"
-#include "timer.h"
-#include "ppu.h"
-#include "dma.h"
 #include "cpu.h"
 
 #include <stdexcept>
@@ -18,7 +15,7 @@ u8 cartridge_data[CARTRIDGE_SIZE];
 
 u32 last_bios_opcode;
 
-static u8 *const region_to_data[9] = {
+u8 *const region_to_data[9] = {
 	bios_data,
 	ewram_data,
 	iwram_data,
@@ -29,11 +26,6 @@ static u8 *const region_to_data[9] = {
 	cartridge_data,
 	nullptr
 };
-
-template<typename T> static T read(addr_t addr);
-template<typename T> static void write(addr_t addr, T data);
-template<typename T> static T mmio_read(addr_t addr);
-template<typename T> static void mmio_write(addr_t addr, T data);
 
 void request_interrupt(u16 flag)
 {
@@ -137,213 +129,6 @@ u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 
 	return offset;
 }
-
-template<typename T>
-static T read(addr_t addr)
-{
-	if constexpr (sizeof(T) == sizeof(u8)) {
-		if (addr == 0x0E000000) {
-			return 0x62;
-		}
-		if (addr == 0x0E000001) {
-			return 0x13;
-		}
-	}
-
-	MemoryRegion region = MemoryRegion::UNUSED;
-
-	u32 offset = resolve_memory_address(addr, region);
-
-	u8 *arr = nullptr;
-
-	arr = region_to_data[region];
-
-	if (!arr) {
-		return BITMASK(sizeof(T));
-	}
-
-	if (region == MemoryRegion::IO) {
-		return mmio_read<T>(addr);
-	}
-
-	if (region == MemoryRegion::BIOS) {
-		if (cpu.pc - 8 >= BIOS_END) {
-			return last_bios_opcode;
-		}
-	}
-
-	return readarr<T>(arr, offset);
-}
-
-template<typename T>
-static void write(addr_t addr, T data)
-{
-	MemoryRegion region = MemoryRegion::UNUSED;
-
-	u32 offset = resolve_memory_address(addr, region);
-
-	switch (region) {
-		case MemoryRegion::BIOS:
-		case MemoryRegion::CARTRIDGE:
-			return;
-		default:
-			break;
-	}
-
-	u8 *arr = region_to_data[region];
-
-	if (!arr) {
-		return;
-	}
-
-	if (region == MemoryRegion::IO) {
-		mmio_write<T>(addr, data);
-		return;
-	}
-
-	if constexpr (sizeof(T) == sizeof(u8)) {
-		if (region == MemoryRegion::OAM)
-			return;
-
-		if (region == MemoryRegion::VRAM) {
-			if (!in_vram_bg(offset)) {
-				return;
-			} else {
-				writearr<u16>(arr, align(offset, 2), data * 0x101);
-				return;
-			}
-		}
-
-		if (region == MemoryRegion::PALETTE_RAM) {
-			writearr<u16>(arr, align(offset, 2), data * 0x101);
-			return;
-		}
-	}
-
-	writearr<T>(arr, offset, data);
-}
-
-template<typename T>
-static T mmio_read(addr_t addr)
-{
-	u32 x = 0;
-
-	for (std::size_t i = 0; i < sizeof(T); i++) {
-		u32 offset = addr - IO_START + i;
-
-		u32 value = io_data[offset];
-
-		switch (addr + i) {
-			case IO_TM0CNT_L:
-			case IO_TM0CNT_L+1:
-			case IO_TM1CNT_L:
-			case IO_TM1CNT_L+1:
-			case IO_TM2CNT_L:
-			case IO_TM2CNT_L+1:
-			case IO_TM3CNT_L:
-			case IO_TM3CNT_L+1:
-				value = timer.on_read(addr + i);
-		}
-
-		x |= value << (i * 8);
-	}
-
-	return x;
-}
-
-template<typename T>
-static void mmio_write(addr_t addr, T data)
-{
-	u32 x = data;
-
-	bool update_affine_ref = false;
-
-	for (std::size_t i = 0; i < sizeof(T); i++) {
-
-		u8 to_write = x & BITMASK(8);
-		u8 mask;
-
-		switch (addr + i) {
-			case IO_KEYINPUT:
-			case IO_KEYINPUT + 1:
-			case IO_VCOUNT:
-				mask = 0;
-				break;
-			case IO_DISPSTAT:
-				mask = 0xF8;
-				break;
-			case IO_IF:
-			case IO_IF + 1:
-				mask = to_write;
-				to_write = 0;
-				break;
-			default:
-				mask = 0xFF;
-		}
-
-		u32 offset = addr - IO_START + i;
-
-		u8 old_value = io_data[offset];
-		u8 new_value = (old_value & ~mask) | (to_write & mask);
-
-		switch (addr + i) {
-			case IO_TM0CNT_H:
-			case IO_TM1CNT_H:
-			case IO_TM2CNT_H:
-			case IO_TM3CNT_H:
-				timer.on_write(addr + i, old_value, new_value);
-				break;
-			case IO_DMA0CNT_H + 1:
-			case IO_DMA1CNT_H + 1:
-			case IO_DMA2CNT_H + 1:
-			case IO_DMA3CNT_H + 1:
-				dma.on_write(addr + i, old_value, new_value);
-				break;
-		}
-
-		if ((IO_BG2X_L <= addr + i && addr + 1 < IO_BG2Y_H + 2) || (IO_BG3X_L <= addr + i && addr + 1 < IO_BG3Y_H + 2)) {
-			update_affine_ref = true;
-		}
-
-		io_data[offset] = new_value;
-		x >>= 8;
-	}
-
-	if (update_affine_ref) {
-		ppu.copy_affine_ref();
-	}
-}
-
-u32 Memory::read32(addr_t addr)
-{
-	return read<u32>(addr);
-}
-
-u16 Memory::read16(addr_t addr)
-{
-	return read<u16>(addr);
-}
-
-u8 Memory::read8(addr_t addr)
-{
-	return read<u8>(addr);
-}
-
-void Memory::write32(addr_t addr, u32 data)
-{
-	write<u32>(addr, data);
-}
-
-void Memory::write16(addr_t addr, u16 data)
-{
-	write<u16>(addr, data);
-}
-
-void Memory::write8(addr_t addr, u8 data)
-{
-	write<u8>(addr, data);
-}
-
 bool in_vram_bg(u32 offset) {
 	bool bitmap_mode = (io_data[0] & 0x7) >= 3;
 	if (bitmap_mode) {

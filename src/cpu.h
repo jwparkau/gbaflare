@@ -41,7 +41,7 @@ enum exception_vectors {
 	VECTOR_FIQ = 0x1C
 };
 
-struct Cpu {
+struct CPU {
 	// registers
 	u32 registers[NUM_MODES][16]{};
 	u32 CPSR{};
@@ -67,13 +67,7 @@ struct Cpu {
 	void arm_execute();
 	void thumb_execute();
 
-	u32 cpu_read32(addr_t addr);
-	u16 cpu_read16(addr_t addr);
-	u8 cpu_read8(addr_t addr);
-
-	void cpu_write32(addr_t addr, u32 data);
-	void cpu_write16(addr_t addr, u16 data);
-	void cpu_write8(addr_t addr, u8 data);
+	DECLARE_READ_WRITE;
 
 	u32 *get_reg(int i);
 	u32 *get_spsr();
@@ -91,7 +85,7 @@ struct Cpu {
 	bool cond_triggered(u32 cond);
 };
 
-extern Cpu cpu;
+extern CPU cpu;
 
 extern bool debug;
 

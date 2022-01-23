@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <iostream>
 
-struct Cpu cpu;
+struct CPU cpu;
 bool debug = false;
 
 static const bool cond_lut[16][16] = {
@@ -29,11 +29,11 @@ static const bool cond_lut[16][16] = {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 };
 
-void Cpu::reset()
+void CPU::reset()
 {
 }
 
-void Cpu::fakeboot()
+void CPU::fakeboot()
 {
 	registers[0][0] = 0x0800'0000;
 	registers[0][1] = 0xEA;
@@ -44,12 +44,12 @@ void Cpu::fakeboot()
 	}
 }
 
-void Cpu::flush_pipeline()
+void CPU::flush_pipeline()
 {
 	fetch();
 }
 
-void Cpu::step()
+void CPU::step()
 {
 	/*
 	 * execute
@@ -82,7 +82,7 @@ void Cpu::step()
 	cpu_cycles += 1;
 }
 
-void Cpu::fetch()
+void CPU::fetch()
 {
 	if (in_thumb_state()) {
 		thumb_fetch();
@@ -91,17 +91,17 @@ void Cpu::fetch()
 	}
 }
 
-void Cpu::arm_fetch()
+void CPU::arm_fetch()
 {
 	pc += 4;
 }
 
-void Cpu::thumb_fetch()
+void CPU::thumb_fetch()
 {
 	pc += 2;
 }
 
-void Cpu::execute()
+void CPU::execute()
 {
 	if (in_thumb_state()) {
 		thumb_execute();
@@ -110,9 +110,9 @@ void Cpu::execute()
 	}
 }
 
-void Cpu::thumb_execute()
+void CPU::thumb_execute()
 {
-	u16 op = cpu_read32(pc - 4);
+	u16 op = read32(pc - 4);
 
 #ifdef DEBUG
 	if (debug) {
@@ -136,14 +136,14 @@ void Cpu::thumb_execute()
 }
 
 
-bool Cpu::cond_triggered(u32 cond)
+bool CPU::cond_triggered(u32 cond)
 {
 	return cond_lut[cond][CPSR >> 28];
 }
 
-void Cpu::arm_execute()
+void CPU::arm_execute()
 {
-	u32 op = cpu_read32(pc - 8);
+	u32 op = read32(pc - 8);
 	if (pc < BIOS_END) {
 		last_bios_opcode = readarr<u32>(bios_data, pc);
 	}
@@ -178,7 +178,7 @@ void Cpu::arm_execute()
 	}
 }
 
-void Cpu::switch_mode(cpu_mode_t new_mode)
+void CPU::switch_mode(cpu_mode_t new_mode)
 {
 	int src = cpu_mode;
 	int dst = new_mode;
@@ -206,7 +206,7 @@ void Cpu::switch_mode(cpu_mode_t new_mode)
 	}
 }
 
-void Cpu::exception_prologue(cpu_mode_t mode, u8 flag)
+void CPU::exception_prologue(cpu_mode_t mode, u8 flag)
 {
 	registers[mode][14] = pc - (in_thumb_state() ? 2 : 4);
 	SPSR[mode] = CPSR;
@@ -216,7 +216,7 @@ void Cpu::exception_prologue(cpu_mode_t mode, u8 flag)
 	set_flag(IRQ_DISABLE, 1);
 }
 
-void Cpu::update_mode()
+void CPU::update_mode()
 {
 	cpu_mode_t new_mode;
 
@@ -249,7 +249,7 @@ void Cpu::update_mode()
 	switch_mode(new_mode);
 }
 
-u32 *Cpu::get_reg(int i)
+u32 *CPU::get_reg(int i)
 {
 	if (i == 15) {
 		return &pc;
@@ -257,7 +257,7 @@ u32 *Cpu::get_reg(int i)
 	return &registers[cpu_mode][i];
 }
 
-u32 *Cpu::get_spsr()
+u32 *CPU::get_spsr()
 {
 	if (cpu_mode == USER || cpu_mode == SYSTEM) {
 		return &CPSR;
@@ -265,17 +265,17 @@ u32 *Cpu::get_spsr()
 	return &SPSR[cpu_mode];
 }
 
-u32 *Cpu::get_sp()
+u32 *CPU::get_sp()
 {
 	return &registers[cpu_mode][13];
 }
 
-u32 *Cpu::get_lr()
+u32 *CPU::get_lr()
 {
 	return &registers[cpu_mode][14];
 }
 
-void Cpu::set_flag(u32 flag, bool x)
+void CPU::set_flag(u32 flag, bool x)
 {
 	if (x) {
 		CPSR |= flag;
@@ -284,52 +284,22 @@ void Cpu::set_flag(u32 flag, bool x)
 	}
 }
 
-u32 Cpu::cpu_read32(addr_t addr)
-{
-	return Memory::read32(addr);
-}
-
-u16 Cpu::cpu_read16(addr_t addr)
-{
-	return Memory::read16(addr);
-}
-
-u8 Cpu::cpu_read8(addr_t addr)
-{
-	return Memory::read8(addr);
-}
-
-void Cpu::cpu_write32(addr_t addr, u32 data)
-{
-	Memory::write32(addr, data);
-}
-
-void Cpu::cpu_write16(addr_t addr, u16 data)
-{
-	Memory::write16(addr, data);
-}
-
-void Cpu::cpu_write8(addr_t addr, u8 data)
-{
-	Memory::write8(addr, data);
-}
-
-bool Cpu::in_thumb_state()
+bool CPU::in_thumb_state()
 {
 	return CPSR & T_STATE;
 }
 
-bool Cpu::in_privileged_mode()
+bool CPU::in_privileged_mode()
 {
 	return cpu_mode != USER;
 }
 
-bool Cpu::has_spsr()
+bool CPU::has_spsr()
 {
 	return !(cpu_mode == USER || cpu_mode == SYSTEM);
 }
 
-void Cpu::dump_registers()
+void CPU::dump_registers()
 {
 
 	for (int i = 0; i < 15; i++) {
@@ -344,3 +314,5 @@ void Cpu::dump_registers()
 
 	fprintf(stderr, "cpsr: %08X |", CPSR);
 }
+
+DEFINE_READ_WRITE(CPU)

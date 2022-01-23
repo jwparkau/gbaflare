@@ -61,23 +61,23 @@ CV_FLAGS_ADD;
 #define __WRITE_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		cpu.cpu_write32(address, (target));\
+		cpu.write32(address, (target));\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	cpu.cpu_write32(address, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
+	cpu.write32(address, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
 }
 
 #define __READ_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		(target) = cpu.cpu_read32(address);\
+		(target) = cpu.read32(address);\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	WRITE_PC(cpu.cpu_read32(address) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
+	WRITE_PC(cpu.read32(address) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
 }
 
 #define READ_MULTIPLE(x) \
@@ -111,6 +111,6 @@ if constexpr (shift_type == 0) {\
 bool carry_ror = false;\
 u32 addr = align(address, (x));\
 u32 rem = address & ((x) - 1);\
-*rd = ror(cpu.cpu_read32(addr) & BITMASK((x) * 8), rem * 8, carry_ror);
+*rd = ror(cpu.read32(addr) & BITMASK((x) * 8), rem * 8, carry_ror);
 
 #endif

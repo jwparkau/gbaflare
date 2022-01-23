@@ -2,6 +2,10 @@
 #define GBAFLARE_MEMORY_H
 
 #include "types.h"
+#include "timer.h"
+#include "ppu.h"
+#include "dma.h"
+#include "cpu.h"
 
 constexpr std::size_t BIOS_SIZE = 16_KiB;
 constexpr std::size_t EWRAM_SIZE = 256_KiB;
@@ -114,7 +118,6 @@ enum io_request_flags : u32 {
 	IRQ_GAMEPAK	= 0x2000
 };
 
-
 enum MemoryRegion {
 	BIOS,
 	EWRAM,
@@ -127,6 +130,11 @@ enum MemoryRegion {
 	UNUSED
 };
 
+enum MemoryAccessFrom {
+	FROM_CPU,
+	FROM_DMA
+};
+
 extern u8 bios_data[BIOS_SIZE];
 extern u8 ewram_data[EWRAM_SIZE];
 extern u8 iwram_data[IWRAM_SIZE];
@@ -136,30 +144,17 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 
+extern u8 *const region_to_data[9];
 extern u32 last_bios_opcode;
 
 void request_interrupt(u16 flag);
-
 u32 resolve_memory_address(addr_t addr, MemoryRegion &region);
-
 void load_bios_rom(const char *filename);
 void load_cartridge_rom(const char *filename);
-
 void set_initial_memory_state();
-
 bool in_vram_bg(addr_t addr);
 
-namespace Memory {
-	u32 read32(addr_t addr);
-	u16 read16(addr_t addr);
-	u8 read8(addr_t addr);
-
-	void write32(addr_t addr, u32 data);
-	void write16(addr_t addr, u16 data);
-	void write8(addr_t addr, u8 data);
-}
-
-template<typename T> inline T readarr(u8 *arr, u32 offset)
+template<typename T> T readarr(u8 *arr, u32 offset)
 {
 	if constexpr (std::endian::native == std::endian::little) {
 		T x;
@@ -186,7 +181,7 @@ template<typename T> inline T readarr(u8 *arr, u32 offset)
 	}
 }
 
-template<typename T> inline void writearr(u8 *arr, u32 offset, T data)
+template<typename T> void writearr(u8 *arr, u32 offset, T data)
 {
 	if constexpr (std::endian::native == std::endian::little) {
 		memcpy(arr + offset, &data, sizeof(T));
@@ -214,14 +209,190 @@ template<typename T> inline void writearr(u8 *arr, u32 offset, T data)
 	}
 }
 
-template<typename T> inline T io_read(addr_t addr)
+template<typename T> T io_read(addr_t addr)
 {
 	return readarr<T>(io_data, addr - IO_START);
 }
 
-template<typename T> inline void io_write(addr_t addr, T data)
+template<typename T> void io_write(addr_t addr, T data)
 {
 	writearr<T>(io_data, addr - IO_START, data);
+}
+
+template<typename T, int type>
+T read(addr_t addr)
+{
+	if constexpr (sizeof(T) == sizeof(u8)) {
+		if (addr == 0x0E000000) {
+			return 0x62;
+		}
+		if (addr == 0x0E000001) {
+			return 0x13;
+		}
+	}
+
+	MemoryRegion region = MemoryRegion::UNUSED;
+
+	u32 offset = resolve_memory_address(addr, region);
+
+	u8 *arr = nullptr;
+
+	arr = region_to_data[region];
+
+	if (!arr) {
+		return BITMASK(sizeof(T));
+	}
+
+	if (region == MemoryRegion::IO) {
+		return mmio_read<T, type>(addr);
+	}
+
+	if (region == MemoryRegion::BIOS) {
+		if (cpu.pc - 8 >= BIOS_END) {
+			return last_bios_opcode;
+		}
+	}
+
+	return readarr<T>(arr, offset);
+}
+
+template<typename T, int type>
+void write(addr_t addr, T data)
+{
+	MemoryRegion region = MemoryRegion::UNUSED;
+
+	u32 offset = resolve_memory_address(addr, region);
+
+	switch (region) {
+		case MemoryRegion::BIOS:
+		case MemoryRegion::CARTRIDGE:
+			return;
+		default:
+			break;
+	}
+
+	u8 *arr = region_to_data[region];
+
+	if (!arr) {
+		return;
+	}
+
+	if (region == MemoryRegion::IO) {
+		mmio_write<T, type>(addr, data);
+		return;
+	}
+
+	if constexpr (sizeof(T) == sizeof(u8)) {
+		if (region == MemoryRegion::OAM)
+			return;
+
+		if (region == MemoryRegion::VRAM) {
+			if (!in_vram_bg(offset)) {
+				return;
+			} else {
+				writearr<u16>(arr, align(offset, 2), data * 0x101);
+				return;
+			}
+		}
+
+		if (region == MemoryRegion::PALETTE_RAM) {
+			writearr<u16>(arr, align(offset, 2), data * 0x101);
+			return;
+		}
+	}
+
+	writearr<T>(arr, offset, data);
+}
+
+template<typename T, int type>
+T mmio_read(addr_t addr)
+{
+	u32 x = 0;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+		u32 offset = addr - IO_START + i;
+
+		u32 value = io_data[offset];
+
+		switch (addr + i) {
+			case IO_TM0CNT_L:
+			case IO_TM0CNT_L+1:
+			case IO_TM1CNT_L:
+			case IO_TM1CNT_L+1:
+			case IO_TM2CNT_L:
+			case IO_TM2CNT_L+1:
+			case IO_TM3CNT_L:
+			case IO_TM3CNT_L+1:
+				value = timer.on_read(addr + i);
+		}
+
+		x |= value << (i * 8);
+	}
+
+	return x;
+}
+
+template<typename T, int type>
+void mmio_write(addr_t addr, T data)
+{
+	u32 x = data;
+
+	bool update_affine_ref = false;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+
+		u8 to_write = x & BITMASK(8);
+		u8 mask;
+
+		switch (addr + i) {
+			case IO_KEYINPUT:
+			case IO_KEYINPUT + 1:
+			case IO_VCOUNT:
+				mask = 0;
+				break;
+			case IO_DISPSTAT:
+				mask = 0xF8;
+				break;
+			case IO_IF:
+			case IO_IF + 1:
+				mask = to_write;
+				to_write = 0;
+				break;
+			default:
+				mask = 0xFF;
+		}
+
+		u32 offset = addr - IO_START + i;
+
+		u8 old_value = io_data[offset];
+		u8 new_value = (old_value & ~mask) | (to_write & mask);
+
+		switch (addr + i) {
+			case IO_TM0CNT_H:
+			case IO_TM1CNT_H:
+			case IO_TM2CNT_H:
+			case IO_TM3CNT_H:
+				timer.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_DMA0CNT_H + 1:
+			case IO_DMA1CNT_H + 1:
+			case IO_DMA2CNT_H + 1:
+			case IO_DMA3CNT_H + 1:
+				dma.on_write(addr + i, old_value, new_value);
+				break;
+		}
+
+		if ((IO_BG2X_L <= addr + i && addr + 1 < IO_BG2Y_H + 2) || (IO_BG3X_L <= addr + i && addr + 1 < IO_BG3Y_H + 2)) {
+			update_affine_ref = true;
+		}
+
+		io_data[offset] = new_value;
+		x >>= 8;
+	}
+
+	if (update_affine_ref) {
+		ppu.copy_affine_ref();
+	}
 }
 
 #endif

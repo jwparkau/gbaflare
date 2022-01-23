@@ -65,4 +65,20 @@ inline int at_most(int x, int n) {
 #define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 #define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
 
+#define DECLARE_READ_WRITE \
+u32 read32(addr_t addr);\
+u16 read16(addr_t addr);\
+u8 read8(addr_t addr);\
+void write32(addr_t addr, u32 data);\
+void write16(addr_t addr, u16 data);\
+void write8(addr_t addr, u8 data)
+
+#define DEFINE_READ_WRITE(x) \
+u32 x::read32(addr_t addr) { return read<u32, FROM_##x>(addr); }\
+u16 x::read16(addr_t addr) { return read<u16, FROM_##x>(addr); }\
+u8 x::read8(addr_t addr) { return read<u8, FROM_##x>(addr); }\
+void x::write32(addr_t addr, u32 data) { write<u32, FROM_##x>(addr, data); }\
+void x::write16(addr_t addr, u16 data) { write<u16, FROM_##x>(addr, data); }\
+void x::write8(addr_t addr, u8 data) { write<u8, FROM_##x>(addr, data); }
+
 #endif
