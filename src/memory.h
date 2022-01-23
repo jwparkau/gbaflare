@@ -119,6 +119,7 @@ enum io_request_flags : u32 {
 };
 
 enum MemoryRegion {
+	UNUSED,
 	BIOS,
 	EWRAM,
 	IWRAM,
@@ -126,13 +127,13 @@ enum MemoryRegion {
 	PALETTE_RAM,
 	VRAM,
 	OAM,
-	CARTRIDGE,
-	UNUSED
+	CARTRIDGE
 };
 
 enum MemoryAccessFrom {
 	FROM_CPU,
-	FROM_DMA
+	FROM_DMA,
+	ALLOW_ALL
 };
 
 extern u8 bios_data[BIOS_SIZE];
@@ -239,21 +240,37 @@ T read(addr_t addr)
 
 	arr = region_to_data[region];
 
-	if (!arr) {
-		return BITMASK(sizeof(T));
-	}
-
 	if (region == MemoryRegion::IO) {
 		return mmio_read<T, type>(addr);
 	}
 
-	if (region == MemoryRegion::BIOS) {
-		if (cpu.pc - 8 >= BIOS_END) {
-			return last_bios_opcode;
+	if constexpr (type == FROM_CPU) {
+		if (region == MemoryRegion::BIOS) {
+			if (cpu.pc - 8 >= BIOS_END) {
+				return last_bios_opcode;
+			}
+		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
+			return read<T, ALLOW_ALL>(cpu.pc);
 		}
 	}
 
-	return readarr<T>(arr, offset);
+	if constexpr (type == FROM_DMA) {
+		if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
+			return dma.last_value[dma.channel];
+		}
+	}
+
+	if (!arr) {
+		return BITMASK(sizeof(T));
+	}
+
+	T x = readarr<T>(arr, offset);
+
+	if constexpr (type == FROM_DMA) {
+		dma.last_value[dma.channel] = x;
+	}
+
+	return x;
 }
 
 template<typename T, int type>
@@ -327,6 +344,10 @@ T mmio_read(addr_t addr)
 		}
 
 		x |= value << (i * 8);
+	}
+
+	if constexpr (type == FROM_DMA) {
+		dma.last_value[dma.channel] = x;
 	}
 
 	return x;

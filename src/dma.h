@@ -37,7 +37,10 @@ struct dma_transfer {
 };
 
 struct DMA {
+	int channel{};
+
 	dma_transfer transfers[NUM_DMA]{};
+	u32 last_value[NUM_DMA]{};
 
 	u32 dma_enabled{};
 	u32 dma_active{};

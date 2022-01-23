@@ -112,7 +112,7 @@ void CPU::execute()
 
 void CPU::thumb_execute()
 {
-	u16 op = read32(pc - 4);
+	u16 op = read16(pc - 4);
 
 #ifdef DEBUG
 	if (debug) {

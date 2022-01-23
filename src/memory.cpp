@@ -16,6 +16,7 @@ u8 cartridge_data[CARTRIDGE_SIZE];
 u32 last_bios_opcode;
 
 u8 *const region_to_data[9] = {
+	nullptr,
 	bios_data,
 	ewram_data,
 	iwram_data,
@@ -23,8 +24,7 @@ u8 *const region_to_data[9] = {
 	palette_data,
 	vram_data,
 	oam_data,
-	cartridge_data,
-	nullptr
+	cartridge_data
 };
 
 void request_interrupt(u16 flag)

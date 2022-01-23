@@ -12,10 +12,10 @@ DMA dma;
 
 void DMA::step()
 {
-	int ch = std::countr_zero(dma_active);
+	channel = std::countr_zero(dma_active);
 
-	if (ch < NUM_DMA) {
-		step_channel(ch);
+	if (channel < NUM_DMA) {
+		step_channel(channel);
 	}
 }
 
