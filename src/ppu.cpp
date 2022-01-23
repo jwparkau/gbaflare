@@ -297,7 +297,11 @@ void PPU::setup_window(int n)
 	int sbb = GET_FLAG(bgcnt, BG_SBB);\
 	int cbb = GET_FLAG(bgcnt, BG_CBB);\
 	u32 tilemap_base = sbb * 2_KiB;\
-	u32 tileset_base = cbb * 16_KiB;
+	u32 tileset_base = cbb * 16_KiB;\
+	bool use_mosaic = GET_FLAG(bgcnt, BG_MOSAIC);\
+	u16 mosaic = io_read<u16>(IO_MOSAIC);\
+	int mosaic_h = GET_FLAG(mosaic, MOSAIC_BH);\
+	int mosaic_v = GET_FLAG(mosaic, MOSAIC_BV);
 
 #define GET_PALETTE_OFFSET(x) \
 	u32 tile_offset;\
@@ -379,6 +383,11 @@ void PPU::render_text_bg(int bg, int priority)
 		int bx = (dx + j) % w;
 		int by = (dy + i) % h;
 
+		if (use_mosaic) {
+			bx = align(bx, mosaic_h+1);
+			by = align(by, mosaic_v+1);
+		}
+
 		int sc = (by / 256)*2 + (bx / 256);
 		if (screen_size == 2) {
 			sc /= 2;
@@ -442,6 +451,11 @@ void PPU::render_affine_bg(int bg, int priority)
 
 		if (bx < 0 || bx >= w || by < 0 || by >= h)
 			continue;
+
+		if (use_mosaic) {
+			bx = align(bx, mosaic_h+1);
+			by = align(by, mosaic_v+1);
+		}
 
 		int tx = bx / 8;
 		int ty = by / 8;
@@ -625,6 +639,10 @@ template <bool is_affine> void PPU::render_sprite(int i)
 	int palette_bank = GET_FLAG(attr2, OBJ_PALETTE_NUMBER);
 	int priority = GET_FLAG(attr2, OBJ_PRIORITY);
 	int gfx_mode = GET_FLAG(attr0, OBJ_MODE);
+	bool use_mosaic = GET_FLAG(attr0, OBJ_MOSAIC);
+	u16 mosaic = io_read<u16>(IO_MOSAIC);
+	int mosaic_h = GET_FLAG(mosaic, MOSAIC_OBJH);
+	int mosaic_v = GET_FLAG(mosaic, MOSAIC_OBJV);
 
 	int px0 = obj_w / 2;
 	int py0 = obj_h / 2;
@@ -679,16 +697,24 @@ template <bool is_affine> void PPU::render_sprite(int i)
 		if (j < 0)
 			continue;
 
-		if (sprite_y < 0 || sprite_y >= obj_h)
+		int sx = sprite_x;
+		int sy = sprite_y;
+
+		if (sy < 0 || sy >= obj_h)
 			continue;
-		if (sprite_x < 0 || sprite_x >= obj_w)
+		if (sx < 0 || sx >= obj_w)
 			continue;
 
-		int tx = sprite_x / 8;
-		int px = sprite_x % 8;
+		if (use_mosaic) {
+			sx = align(sx, mosaic_h+1);
+			sy = align(sy, mosaic_v+1);
+		}
 
-		int ty = sprite_y / 8;
-		int py = sprite_y % 8;
+		int tx = sx / 8;
+		int px = sx % 8;
+
+		int ty = sy / 8;
+		int py = sy % 8;
 
 		int tile_number;
 

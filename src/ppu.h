@@ -138,6 +138,15 @@ enum blend_effects {
 #define COLOR_B_MASK BITMASK(5)
 #define COLOR_B_SHIFT 10
 
+#define MOSAIC_BH_MASK BITMASK(4)
+#define MOSAIC_BH_SHIFT 0
+#define MOSAIC_BV_MASK BITMASK(4)
+#define MOSAIC_BV_SHIFT 4
+#define MOSAIC_OBJH_MASK BITMASK(4)
+#define MOSAIC_OBJH_SHIFT 8
+#define MOSAIC_OBJV_MASK BITMASK(4)
+#define MOSAIC_OBJV_SHIFT 12
+
 
 #define LY() io_data[IO_VCOUNT - IO_START]
 #define DISPSTAT() io_data[IO_DISPSTAT - IO_START]
