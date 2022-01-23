@@ -465,19 +465,31 @@ T sram_read(addr_t addr)
 				return 0x1B;
 			}
 		}
-	} else if (cartridge.save_type == SAVE_SRAM) {
-		return readarr<T>(sram_data, addr % SRAM_SIZE);
 	}
 
-	return 0;
+	if (cartridge.save_type != SAVE_SRAM) {
+		return 0;
+	}
+
+	u32 x = readarr<u8>(sram_data, addr % SRAM_SIZE);
+
+	if constexpr (sizeof(T) == sizeof(u8)) {
+		return x;
+	} else if constexpr (sizeof(T) == sizeof(u16)) {
+		return x * 0x101;
+	} else {
+		return x * 0x1010101;
+	}
 }
 
 template<typename T, int type>
 void sram_write(addr_t addr, T data)
 {
-	if (cartridge.save_type == SAVE_SRAM) {
-		writearr<T>(sram_data, addr % SRAM_SIZE, data);
+	if (cartridge.save_type != SAVE_SRAM) {
+		return;
 	}
+
+	writearr<u8>(sram_data, addr % SRAM_SIZE, data & BITMASK(8));
 }
 
 #endif

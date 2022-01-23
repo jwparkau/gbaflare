@@ -170,6 +170,7 @@ u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 			offset = addr % CARTRIDGE_SIZE;
 			break;
 		case 0x0E:
+		case 0x0F:
 			region = MemoryRegion::SRAM;
 			offset = addr % SRAM_SIZE;
 			break;
