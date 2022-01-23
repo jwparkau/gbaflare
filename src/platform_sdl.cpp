@@ -18,11 +18,12 @@ enum joypad_buttons {
 };
 
 static joypad_buttons translate_sym(SDL_Keycode sym);
+static joypad_buttons translate_button(int button);
 static void update_joypad(joypad_buttons button, bool down);
 
 int Platform::init()
 {
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) < 0) {
 		printf("could not init SDL\n");
 		goto init_failed;
 	}
@@ -52,6 +53,8 @@ int Platform::init()
 		goto init_failed;
 	}
 
+	add_controller();
+
 	emulator_running = true;
 	return PLATFORM_INIT_SUCCESS;
 
@@ -76,6 +79,27 @@ init_failed:
 	return PLATFORM_INIT_FAIL;
 }
 
+void Platform::add_controller()
+{
+	if (controller) {
+		return;
+	}
+
+	for (int i = 0; i < SDL_NumJoysticks(); i++) {
+		if (SDL_IsGameController(i)) {
+			controller = SDL_GameControllerOpen(i);
+			break;
+		}
+	}
+}
+
+void Platform::remove_controller()
+{
+	if (controller) {
+		SDL_GameControllerClose(controller);
+		controller = nullptr;
+	}
+}
 
 void Platform::render(u16 *pixels)
 {
@@ -114,6 +138,17 @@ void Platform::handle_input()
 			case SDL_KEYUP:
 				update_joypad(translate_sym(e.key.keysym.sym), e.type == SDL_KEYDOWN);
 				break;
+			case SDL_CONTROLLERBUTTONDOWN:
+			case SDL_CONTROLLERBUTTONUP:
+				update_joypad(translate_button(e.cbutton.button), e.type == SDL_CONTROLLERBUTTONDOWN);
+				break;
+			case SDL_CONTROLLERDEVICEADDED:
+				add_controller();
+				break;
+			case SDL_CONTROLLERDEVICEREMOVED:
+				remove_controller();
+				break;
+
 		}
 	}
 }
@@ -153,6 +188,34 @@ static joypad_buttons translate_sym(SDL_Keycode sym)
 		case SDLK_s:
 			return BUTTON_R;
 		case SDLK_a:
+			return BUTTON_L;
+		default:
+			return NOT_MAPPED;
+	}
+}
+
+static joypad_buttons translate_button(int button)
+{
+	switch (button) {
+		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+			return BUTTON_RIGHT;
+		case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+			return BUTTON_LEFT;
+		case SDL_CONTROLLER_BUTTON_DPAD_UP:
+			return BUTTON_UP;
+		case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+			return BUTTON_DOWN;
+		case SDL_CONTROLLER_BUTTON_A:
+			return BUTTON_A;
+		case SDL_CONTROLLER_BUTTON_B:
+			return BUTTON_B;
+		case SDL_CONTROLLER_BUTTON_START:
+			return BUTTON_START;
+		case SDL_CONTROLLER_BUTTON_BACK:
+			return BUTTON_SELECT;
+		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+			return BUTTON_R;
+		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
 			return BUTTON_L;
 		default:
 			return NOT_MAPPED;

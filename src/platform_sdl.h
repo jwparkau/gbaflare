@@ -14,6 +14,10 @@ struct Platform {
 	SDL_Window *window{};
 	SDL_Renderer *renderer{};
 	SDL_Texture *texture{};
+	SDL_GameController *controller{};
+
+	void add_controller();
+	void remove_controller();
 
 	const int width = 240;
 	const int height = 160;
