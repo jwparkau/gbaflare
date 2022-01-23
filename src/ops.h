@@ -3,12 +3,6 @@
 
 #include "types.h"
 
-u32 ror(u32 x, u32 n, bool &carry);
-u32 asr(u32 x, u32 n, bool &carry);
-u32 lsr(u32 x, u32 n, bool &carry);
-u32 lsl(u32 x, u32 n, bool &carry);
-u32 rrx(u32 x, bool &carry);
-
 #define WRITE_PC(x) \
 cpu.pc = (x);\
 cpu.flush_pipeline();
@@ -61,12 +55,12 @@ CV_FLAGS_ADD;
 #define __WRITE_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		cpu.write32(address, (target));\
+		cpu.write32_noalign(address+rem, (target));\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	cpu.write32(address, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
+	cpu.write32_noalign(address+rem, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
 }
 
 #define __READ_MULTIPLE(x, target) \

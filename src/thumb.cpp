@@ -362,9 +362,9 @@ void thumb_loadstore_reg(u16 op)
 	u32 address = rn + rm;
 
 	if constexpr (code == 0) {
-		cpu.write32(align(address, 4), *rd);
+		cpu.write32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
-		cpu.write16(align(address, 2), *rd & BITMASK(16));
+		cpu.write16_noalign(address, *rd & BITMASK(16));
 	} else if constexpr (code == 2) {
 		cpu.write8(address, *rd & BITMASK(8));
 	} else if constexpr (code == 3) {
@@ -399,7 +399,7 @@ void thumb_loadstore_imm(u16 op)
 
 	if constexpr (code == 0) {
 		u32 address = rn + imm * 4;
-		cpu.write32(align(address, 4), *rd);
+		cpu.write32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
 		u32 address = rn + imm * 4;
 		UNALIGNED_LOAD_ROR(4);
@@ -422,7 +422,7 @@ void thumb_loadstore_half(u16 op)
 	u32 address = rn + imm * 2;
 
 	if constexpr (code == 0) {
-		cpu.write16(align(address, 2), *rd & BITMASK(16));
+		cpu.write16_noalign(address, *rd & BITMASK(16));
 	} else if constexpr (code == 1) {
 		UNALIGNED_LOAD_ROR(2);
 	}
@@ -438,7 +438,7 @@ void thumb_loadstore_sp(u16 op)
 	u32 address = sp + imm * 4;
 
 	if constexpr (code == 0) {
-		cpu.write32(align(address, 4), *rd);
+		cpu.write32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
 		UNALIGNED_LOAD_ROR(4);
 	}
@@ -479,12 +479,13 @@ void thumb_pushpop(u16 op)
 	u32 k = 4 * (std::popcount(register_list) + pclr);
 
 	if constexpr (code == 0) {
+		int rem = (*sp - k) % 4;
 		u32 address = align(*sp - k, 4);
 
 		WRITE_MULTIPLE(7);
 
 		if constexpr (pclr) {
-			cpu.write32(address, *cpu.get_lr());
+			cpu.write32_noalign(address+rem, *cpu.get_lr());
 		}
 
 		*sp = *sp - k;
@@ -511,8 +512,9 @@ void thumb_multiple(u16 op)
 	u32 old_rn = *rn;
 
 	u32 k = 4 * std::popcount(register_list);
-	u32 start_address = align(*rn, 4);
-	u32 address = start_address;
+	u32 start_address = *rn;
+	u32 address = align(start_address, 4);
+	int rem = start_address % 4;
 
 	if (register_list == 0) {
 		k = 0x40;
@@ -528,7 +530,7 @@ void thumb_multiple(u16 op)
 
 	if constexpr (code == 0) {
 		if ((register_list & BITMASK(rni + 1)) == BIT(rni)) {
-			cpu.write32(start_address, old_rn);
+			cpu.write32_noalign(start_address, old_rn);
 		}
 	} else {
 		if (register_list & BIT(rni)) {

@@ -315,4 +315,28 @@ void CPU::dump_registers()
 	fprintf(stderr, "cpsr: %08X |", CPSR);
 }
 
+void CPU::write32_noalign(addr_t addr, u32 data)
+{
+	if (SRAM_START <= addr && addr < SRAM_END) {
+		bool c;
+		addr_rem = addr % 4;
+		data = ror(data, addr_rem * 8, c);
+		write8(addr, data);
+	} else {
+		write32(align(addr, 4), data);
+	}
+}
+
+void CPU::write16_noalign(addr_t addr, u16 data)
+{
+	if (SRAM_START <= addr && addr < SRAM_END) {
+		bool c;
+		addr_rem = addr % 2;
+		data = ror(data, addr_rem * 8, c);
+		write8(addr, data);
+	} else {
+		write16(align(addr, 2), data);
+	}
+}
+
 DEFINE_READ_WRITE(CPU)

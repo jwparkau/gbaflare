@@ -7,6 +7,7 @@
 #include <regex>
 
 Cartridge cartridge;
+Flash flash;
 
 u8 bios_data[BIOS_SIZE];
 u8 ewram_data[EWRAM_SIZE];
@@ -71,7 +72,7 @@ void load_bios_rom(const char *filename)
 
 void determine_save_type()
 {
-	std::regex r("SRAM_V\\d\\d\\d|FLASH_\\d\\d\\d|FLASH512_V\\d\\d\\d|FLASH1M_V\\d\\d\\d");
+	std::regex r("SRAM_V|FLASH_|FLASH512_V|FLASH1M_V");
 	std::cmatch m;
 
 	if (std::regex_search((const char *)cartridge_data, (const char *)cartridge_data+cartridge.size, m, r)) {
@@ -106,6 +107,24 @@ void save_sram()
 	f.write((char *)sram_data, SRAM_SIZE);
 
 	fprintf(stderr, "saved sram to file: %s\n", cartridge.save_file.c_str());
+}
+
+void load_flash()
+{
+	std::ifstream f(cartridge.save_file, std::ios_base::binary);
+
+	f.read((char *)flash.flash_memory, MAX_FLASH_SIZE);
+	auto bytes_read = f.gcount();
+
+	fprintf(stderr, "flash save file: read %ld bytes\n", bytes_read);
+}
+
+void save_flash()
+{
+	std::ofstream f(cartridge.save_file, std::ios_base::binary);
+	f.write((char *)flash.flash_memory, MAX_FLASH_SIZE);
+
+	fprintf(stderr, "saved flash to file: %s\n", cartridge.save_file.c_str());
 }
 
 void set_initial_memory_state()

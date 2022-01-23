@@ -62,6 +62,12 @@ inline int at_most(int x, int n) {
 	return min(x, n);
 }
 
+u32 ror(u32 x, u32 n, bool &carry);
+u32 asr(u32 x, u32 n, bool &carry);
+u32 lsr(u32 x, u32 n, bool &carry);
+u32 lsl(u32 x, u32 n, bool &carry);
+u32 rrx(u32 x, bool &carry);
+
 #define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 #define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
 

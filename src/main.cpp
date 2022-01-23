@@ -30,8 +30,15 @@ int main(int argc, char **argv)
 
 	load_cartridge_rom();
 	determine_save_type();
-	if (cartridge.save_type == SAVE_SRAM) {
-		load_sram();
+
+	switch (cartridge.save_type) {
+		case SAVE_SRAM:
+			load_sram();
+			break;
+		case SAVE_FLASH64:
+		case SAVE_FLASH128:
+			load_flash();
+			break;
 	}
 
 	int err = platform_init();
@@ -70,8 +77,14 @@ int main(int argc, char **argv)
 		end_event_processing();
 	}
 
-	if (cartridge.save_type == SAVE_SRAM) {
-		save_sram();
+	switch (cartridge.save_type) {
+		case SAVE_SRAM:
+			save_sram();
+			break;
+		case SAVE_FLASH64:
+		case SAVE_FLASH128:
+			save_flash();
+			break;
 	}
 
 	return 0;
