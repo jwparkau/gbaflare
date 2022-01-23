@@ -208,6 +208,7 @@ static joypad_buttons translate_button(int button)
 		case SDL_CONTROLLER_BUTTON_A:
 			return BUTTON_A;
 		case SDL_CONTROLLER_BUTTON_B:
+		case SDL_CONTROLLER_BUTTON_X:
 			return BUTTON_B;
 		case SDL_CONTROLLER_BUTTON_START:
 			return BUTTON_START;

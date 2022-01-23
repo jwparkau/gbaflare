@@ -24,7 +24,15 @@ int main(int argc, char **argv)
 	}
 
 	load_bios_rom("../boot/gba_bios.bin");
-	load_cartridge_rom(argv[1]);
+
+	cartridge.filename = std::string(argv[1]);
+	cartridge.save_file = cartridge.filename + ".flaresav";
+
+	load_cartridge_rom();
+	determine_save_type();
+	if (cartridge.save_type == SAVE_SRAM) {
+		load_sram();
+	}
 
 	int err = platform_init();
 	if (err) {
@@ -60,6 +68,10 @@ int main(int argc, char **argv)
 		ppu.step();
 
 		end_event_processing();
+	}
+
+	if (cartridge.save_type == SAVE_SRAM) {
+		save_sram();
 	}
 
 	return 0;

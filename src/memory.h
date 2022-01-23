@@ -7,6 +7,8 @@
 #include "dma.h"
 #include "cpu.h"
 
+#include <string>
+
 constexpr std::size_t BIOS_SIZE = 16_KiB;
 constexpr std::size_t EWRAM_SIZE = 256_KiB;
 constexpr std::size_t IWRAM_SIZE = 32_KiB;
@@ -15,6 +17,7 @@ constexpr std::size_t PALETTE_RAM_SIZE = 1_KiB;
 constexpr std::size_t VRAM_SIZE = 96_KiB;
 constexpr std::size_t OAM_SIZE = 1_KiB;
 constexpr std::size_t CARTRIDGE_SIZE = 32_MiB;
+constexpr std::size_t SRAM_SIZE = 64_KiB;
 
 constexpr addr_t BIOS_START = 0x0;
 constexpr addr_t EWRAM_START = 0x0200'0000;
@@ -24,6 +27,7 @@ constexpr addr_t PALETTE_RAM_START = 0x0500'0000;
 constexpr addr_t VRAM_START = 0x0600'0000;
 constexpr addr_t OAM_START = 0x0700'0000;
 constexpr addr_t CARTRIDGE_START = 0x0800'0000;
+constexpr addr_t SRAM_START = 0x0E00'0000;
 
 constexpr addr_t BIOS_END = BIOS_START + BIOS_SIZE;
 constexpr addr_t EWRAM_END = EWRAM_START + EWRAM_SIZE;
@@ -33,6 +37,7 @@ constexpr addr_t PALETTE_RAM_END = PALETTE_RAM_START + PALETTE_RAM_SIZE;
 constexpr addr_t VRAM_END = VRAM_START + VRAM_SIZE;
 constexpr addr_t OAM_END = OAM_START + OAM_SIZE;
 constexpr addr_t CARTRIDGE_END = CARTRIDGE_START + CARTRIDGE_SIZE;
+constexpr addr_t SRAM_END = SRAM_START + SRAM_SIZE;
 
 enum io_registers : u32 {
 	IO_DISPCNT	= 0x0400'0000,
@@ -127,7 +132,9 @@ enum MemoryRegion {
 	PALETTE_RAM,
 	VRAM,
 	OAM,
-	CARTRIDGE
+	CARTRIDGE,
+	SRAM,
+	NUM_REGIONS
 };
 
 enum MemoryAccessFrom {
@@ -135,6 +142,23 @@ enum MemoryAccessFrom {
 	FROM_DMA,
 	ALLOW_ALL
 };
+
+enum SaveType {
+	SAVE_NONE,
+	SAVE_FLASH64,
+	SAVE_FLASH128,
+	SAVE_SRAM
+};
+
+struct Cartridge {
+	bool save_type_known{};
+	int save_type{};
+	std::size_t size{};
+	std::string filename;
+	std::string save_file;
+};
+
+extern Cartridge cartridge;
 
 extern u8 bios_data[BIOS_SIZE];
 extern u8 ewram_data[EWRAM_SIZE];
@@ -144,14 +168,18 @@ extern u8 palette_data[PALETTE_RAM_SIZE];
 extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
+extern u8 sram_data[SRAM_SIZE];
 
-extern u8 *const region_to_data[9];
+extern u8 *const region_to_data[NUM_REGIONS];
 extern u32 last_bios_opcode;
 
 void request_interrupt(u16 flag);
 u32 resolve_memory_address(addr_t addr, MemoryRegion &region);
 void load_bios_rom(const char *filename);
-void load_cartridge_rom(const char *filename);
+void load_cartridge_rom();
+void determine_save_type();
+void load_sram();
+void save_sram();
 void set_initial_memory_state();
 bool in_vram_bg(addr_t addr);
 
@@ -223,15 +251,6 @@ template<typename T> void io_write(addr_t addr, T data)
 template<typename T, int type>
 T read(addr_t addr)
 {
-	if constexpr (sizeof(T) == sizeof(u8)) {
-		if (addr == 0x0E000000) {
-			return 0x62;
-		}
-		if (addr == 0x0E000001) {
-			return 0x13;
-		}
-	}
-
 	MemoryRegion region = MemoryRegion::UNUSED;
 
 	u32 offset = resolve_memory_address(addr, region);
@@ -242,6 +261,10 @@ T read(addr_t addr)
 
 	if (region == MemoryRegion::IO) {
 		return mmio_read<T, type>(addr);
+	}
+
+	if (region == MemoryRegion::SRAM) {
+		return sram_read<T, type>(addr);
 	}
 
 	if constexpr (type == FROM_CPU) {
@@ -296,6 +319,11 @@ void write(addr_t addr, T data)
 
 	if (region == MemoryRegion::IO) {
 		mmio_write<T, type>(addr, data);
+		return;
+	}
+
+	if (region == MemoryRegion::SRAM) {
+		sram_write<T, type>(addr, data);
 		return;
 	}
 
@@ -413,6 +441,42 @@ void mmio_write(addr_t addr, T data)
 
 	if (update_affine_ref) {
 		ppu.copy_affine_ref();
+	}
+}
+
+template<typename T, int type>
+T sram_read(addr_t addr)
+{
+	if (cartridge.save_type == SAVE_FLASH128) {
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			if (addr == 0x0E000000) {
+				return 0x62;
+			}
+			if (addr == 0x0E000001) {
+				return 0x13;
+			}
+		}
+	} else if (cartridge.save_type == SAVE_FLASH64) {
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			if (addr == 0x0E000000) {
+				return 0x32;
+			}
+			if (addr == 0x0E000001) {
+				return 0x1B;
+			}
+		}
+	} else if (cartridge.save_type == SAVE_SRAM) {
+		return readarr<T>(sram_data, addr % SRAM_SIZE);
+	}
+
+	return 0;
+}
+
+template<typename T, int type>
+void sram_write(addr_t addr, T data)
+{
+	if (cartridge.save_type == SAVE_SRAM) {
+		writearr<T>(sram_data, addr % SRAM_SIZE, data);
 	}
 }
 

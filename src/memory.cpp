@@ -1,8 +1,12 @@
 #include "memory.h"
 #include "cpu.h"
 
+#include <iostream>
 #include <stdexcept>
 #include <fstream>
+#include <regex>
+
+Cartridge cartridge;
 
 u8 bios_data[BIOS_SIZE];
 u8 ewram_data[EWRAM_SIZE];
@@ -12,10 +16,11 @@ u8 palette_data[PALETTE_RAM_SIZE];
 u8 vram_data[VRAM_SIZE];
 u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
+u8 sram_data[SRAM_SIZE];
 
 u32 last_bios_opcode;
 
-u8 *const region_to_data[9] = {
+u8 *const region_to_data[NUM_REGIONS] = {
 	nullptr,
 	bios_data,
 	ewram_data,
@@ -24,7 +29,8 @@ u8 *const region_to_data[9] = {
 	palette_data,
 	vram_data,
 	oam_data,
-	cartridge_data
+	cartridge_data,
+	sram_data
 };
 
 void request_interrupt(u16 flag)
@@ -34,9 +40,9 @@ void request_interrupt(u16 flag)
 	io_write<u16>(IO_IF, inter_flag);
 }
 
-void load_cartridge_rom(const char *filename)
+void load_cartridge_rom()
 {
-	std::ifstream f(filename, std::ios_base::binary);
+	std::ifstream f(cartridge.filename, std::ios_base::binary);
 
 	f.read((char *)cartridge_data, CARTRIDGE_SIZE);
 	auto bytes_read = f.gcount();
@@ -44,6 +50,7 @@ void load_cartridge_rom(const char *filename)
 	if (bytes_read == 0) {
 		throw std::runtime_error("ERROR while reading cartridge file");
 	}
+	cartridge.size = bytes_read;
 
 	fprintf(stderr, "cartridge rom: read %ld bytes\n", bytes_read);
 }
@@ -60,6 +67,45 @@ void load_bios_rom(const char *filename)
 	}
 
 	fprintf(stderr, "bios rom: read %ld bytes\n", bytes_read);
+}
+
+void determine_save_type()
+{
+	std::regex r("SRAM_V\\d\\d\\d|FLASH_\\d\\d\\d|FLASH512_V\\d\\d\\d|FLASH1M_V\\d\\d\\d");
+	std::cmatch m;
+
+	if (std::regex_search((const char *)cartridge_data, (const char *)cartridge_data+cartridge.size, m, r)) {
+		fprintf(stderr, "detected save type -- %s\n", m[0].str().c_str());
+		cartridge.save_type_known = true;
+
+		if (m[0].str().starts_with("SRAM")) {
+			cartridge.save_type = SAVE_SRAM;
+		} else if (m[0].str().starts_with("FLASH_") || m[0].str().starts_with("FLASH512_")) {
+			cartridge.save_type = SAVE_FLASH64;
+		} else if (m[0].str().starts_with("FLASH1M_")) {
+			cartridge.save_type = SAVE_FLASH128;
+		}
+
+		return;
+	}
+}
+
+void load_sram()
+{
+	std::ifstream f(cartridge.save_file, std::ios_base::binary);
+
+	f.read((char *)sram_data, SRAM_SIZE);
+	auto bytes_read = f.gcount();
+
+	fprintf(stderr, "sram save file: read %ld bytes\n", bytes_read);
+}
+
+void save_sram()
+{
+	std::ofstream f(cartridge.save_file, std::ios_base::binary);
+	f.write((char *)sram_data, SRAM_SIZE);
+
+	fprintf(stderr, "saved sram to file: %s\n", cartridge.save_file.c_str());
 }
 
 void set_initial_memory_state()
@@ -122,6 +168,10 @@ u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 		case 0x0D:
 			region = MemoryRegion::CARTRIDGE;
 			offset = addr % CARTRIDGE_SIZE;
+			break;
+		case 0x0E:
+			region = MemoryRegion::SRAM;
+			offset = addr % SRAM_SIZE;
 			break;
 		default:
 			region = MemoryRegion::UNUSED;
