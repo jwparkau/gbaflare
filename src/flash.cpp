@@ -17,7 +17,7 @@ void Flash::erase_page(int page) {
 	if (cartridge.save_type == SAVE_FLASH128 && flash_bank) {
 		p += 64_KiB;
 	}
-	for (u32 i = page << 12; i < 4_KiB; i++) {
+	for (u32 i = page << 12, j = 0; j < 4_KiB; i++, j++) {
 		p[i] = 0xFF;
 	}
 }
