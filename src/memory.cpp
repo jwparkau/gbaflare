@@ -42,6 +42,10 @@ void request_interrupt(u16 flag)
 
 void load_cartridge_rom()
 {
+	for (u32 i = 0; i < CARTRIDGE_SIZE; i += 2) {
+		writearr<u16>(cartridge_data, i, i / 2 & 0xFFFF);
+	}
+
 	std::ifstream f(cartridge.filename, std::ios_base::binary);
 
 	f.read((char *)cartridge_data, CARTRIDGE_SIZE);

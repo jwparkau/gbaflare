@@ -315,9 +315,27 @@ void CPU::dump_registers()
 	fprintf(stderr, "cpsr: %08X |", CPSR);
 }
 
+u32 CPU::read32_noalign(addr_t addr)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		return read32(addr);
+	}
+
+	return read32(align(addr, 4));
+}
+
+u16 CPU::read16_noalign(addr_t addr)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		return read16(addr);
+	}
+
+	return read16(align(addr, 2));
+}
+
 void CPU::write32_noalign(addr_t addr, u32 data)
 {
-	if (SRAM_START <= addr && addr < SRAM_END) {
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
 		addr_rem = addr % 4;
 		data = ror(data, addr_rem * 8, c);
@@ -329,7 +347,7 @@ void CPU::write32_noalign(addr_t addr, u32 data)
 
 void CPU::write16_noalign(addr_t addr, u16 data)
 {
-	if (SRAM_START <= addr && addr < SRAM_END) {
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
 		addr_rem = addr % 2;
 		data = ror(data, addr_rem * 8, c);

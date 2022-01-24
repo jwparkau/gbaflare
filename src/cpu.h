@@ -70,6 +70,8 @@ struct CPU {
 
 	DECLARE_READ_WRITE;
 
+	u32 read32_noalign(addr_t addr);
+	u16 read16_noalign(addr_t addr);
 	void write32_noalign(addr_t addr, u32 data);
 	void write16_noalign(addr_t addr, u16 data);
 

@@ -349,7 +349,7 @@ void thumb_load_pool(u16 op)
 	u32 *rd = cpu.get_reg(op >> 8 & BITMASK(3));
 	u32 nn = op & BITMASK(8);
 
-	*rd = cpu.read32(align(cpu.pc, 4) + nn * 4);
+	*rd = cpu.read32_noalign(cpu.pc + nn * 4);
 }
 
 template <u32 code>
@@ -370,22 +370,24 @@ void thumb_loadstore_reg(u16 op)
 	} else if constexpr (code == 3) {
 		*rd = (s8)cpu.read8(address);
 	} else if constexpr (code == 4) {
-		UNALIGNED_LOAD_ROR(4);
+		bool c;
+		int rem = address % 4;
+		*rd = ror(cpu.read32_noalign(address), rem * 8, c);
 	} else if constexpr (code == 5) {
-		UNALIGNED_LOAD_ROR(2);
+		bool c;
+		int rem = address % 2;
+		*rd = ror(cpu.read16_noalign(address), rem * 8, c);
 	} else if constexpr (code == 6) {
 		*rd = cpu.read8(address);
 	} else if constexpr (code == 7) {
-		u32 addr;
 		u32 rem;
 
-		addr = align(address, 2);
 		rem = address & BITMASK(1);
 
 		if (rem) {
-			*rd = (s8)cpu.read16(address);
+			*rd = (s8)cpu.read8(address);
 		} else {
-			*rd = (s16)cpu.read16(addr);
+			*rd = (s16)cpu.read16(align(address, 2));
 		}
 	}
 }
@@ -402,7 +404,9 @@ void thumb_loadstore_imm(u16 op)
 		cpu.write32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
 		u32 address = rn + imm * 4;
-		UNALIGNED_LOAD_ROR(4);
+		bool c;
+		int rem = address % 4;
+		*rd = ror(cpu.read32_noalign(address), rem * 8, c);
 	} else if constexpr (code == 2) {
 		u32 address = rn + imm;
 		cpu.write8(address, *rd & BITMASK(8));
@@ -424,7 +428,9 @@ void thumb_loadstore_half(u16 op)
 	if constexpr (code == 0) {
 		cpu.write16_noalign(address, *rd & BITMASK(16));
 	} else if constexpr (code == 1) {
-		UNALIGNED_LOAD_ROR(2);
+		bool c;
+		int rem = address % 2;
+		*rd = ror(cpu.read16_noalign(address), rem * 8, c);
 	}
 }
 
@@ -440,7 +446,9 @@ void thumb_loadstore_sp(u16 op)
 	if constexpr (code == 0) {
 		cpu.write32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
-		UNALIGNED_LOAD_ROR(4);
+		bool c;
+		int rem = address % 4;
+		*rd = ror(cpu.read32_noalign(address), rem * 8, c);
 	}
 }
 
@@ -490,13 +498,14 @@ void thumb_pushpop(u16 op)
 
 		*sp = *sp - k;
 	} else if constexpr (code == 1) {
-		u32 end_address = *sp + k;
+		int rem = *sp % 4;
 		u32 address = align(*sp, 4);
+		u32 end_address = *sp + k;
 
 		READ_MULTIPLE(7);
 
 		if constexpr (pclr) {
-			WRITE_PC(align(cpu.read32(address), 2));
+			WRITE_PC(align(cpu.read32_noalign(address+rem), 2));
 		}
 
 		*sp = end_address;

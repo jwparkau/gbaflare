@@ -1,5 +1,14 @@
 #include "types.h"
 
+u32 ror(u32 x, u32 n)
+{
+	if (n == 0) {
+		return x;
+	}
+
+	return (x >> n) | (x << (32 - n));
+}
+
 u32 ror(u32 x, u32 n, bool &carry)
 {
 	if (n == 0) {

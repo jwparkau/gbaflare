@@ -66,12 +66,12 @@ if (register_list == 0) {\
 #define __READ_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		(target) = cpu.read32(address);\
+		(target) = cpu.read32_noalign(address+rem);\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	WRITE_PC(cpu.read32(address) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
+	WRITE_PC(cpu.read32_noalign(address+rem) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
 }
 
 #define READ_MULTIPLE(x) \
@@ -100,11 +100,5 @@ if constexpr (shift_type == 0) {\
 		(x) = ror(rm, imm, k);\
 	}\
 }
-
-#define UNALIGNED_LOAD_ROR(x) \
-bool carry_ror = false;\
-u32 addr = align(address, (x));\
-u32 rem = address & ((x) - 1);\
-*rd = ror(cpu.read32(addr) & BITMASK((x) * 8), rem * 8, carry_ror);
 
 #endif

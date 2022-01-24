@@ -63,6 +63,7 @@ inline int at_most(int x, int n) {
 }
 
 u32 ror(u32 x, u32 n, bool &carry);
+u32 ror(u32 x, u32 n);
 u32 asr(u32 x, u32 n, bool &carry);
 u32 lsr(u32 x, u32 n, bool &carry);
 u32 lsl(u32 x, u32 n, bool &carry);

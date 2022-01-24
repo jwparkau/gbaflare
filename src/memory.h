@@ -196,10 +196,6 @@ template<typename T> void io_write(addr_t addr, T data)
 
 template<typename T, int type> T sram_read(addr_t addr)
 {
-	if (cartridge.save_type != SAVE_SRAM) {
-		return 0;
-	}
-
 	u32 x = readarr<u8>(sram_data, addr % SRAM_SIZE);
 
 	if constexpr (sizeof(T) == sizeof(u8)) {
@@ -213,10 +209,6 @@ template<typename T, int type> T sram_read(addr_t addr)
 
 template<typename T, int type> void sram_write(addr_t addr, T data)
 {
-	if (cartridge.save_type != SAVE_SRAM) {
-		return;
-	}
-
 	writearr<u8>(sram_data, addr % SRAM_SIZE, data & BITMASK(8));
 }
 
@@ -231,10 +223,6 @@ template<typename T, int type> T read(addr_t addr)
 
 	arr = region_to_data[region];
 
-	if (region == MemoryRegion::IO) {
-		return mmio_read<T, type>(addr);
-	}
-
 	if (region == MemoryRegion::SRAM) {
 		if (cartridge.save_type == SAVE_SRAM) {
 			return sram_read<T, type>(addr);
@@ -245,13 +233,26 @@ template<typename T, int type> T read(addr_t addr)
 		}
 	}
 
+	if (region == MemoryRegion::IO) {
+		return mmio_read<T, type>(addr);
+	}
+
 	if constexpr (type == FROM_CPU) {
 		if (region == MemoryRegion::BIOS) {
 			if (cpu.pc - 8 >= BIOS_END) {
-				return last_bios_opcode;
+				if constexpr (sizeof(T) == sizeof(u8)) {
+					return last_bios_opcode >> (addr % 4 * 8);
+				} else {
+					return last_bios_opcode;
+				}
 			}
 		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
-			return read<T, ALLOW_ALL>(cpu.pc);
+			u32 x = read<u32, ALLOW_ALL>(cpu.pc);
+			if constexpr (sizeof(T) == sizeof(u8)) {
+				return x >> (addr % 4 * 8);
+			} else {
+				return x;
+			}
 		}
 	}
 
