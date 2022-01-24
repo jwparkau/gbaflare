@@ -45,10 +45,13 @@ void DMA::step_channel(int ch)
 		}
 	}
 
-
 	int destcnt = GET_FLAG(cnt_h, DMA_DESTCNT);
+	int sad_delta = sad_offset[GET_FLAG(cnt_h, DMA_SRCCNT)];
+	if (t.sad >= 0x0800'0000 && t.sad < 0x0E00'0000) {
+		sad_delta = 1;
+	}
 
-	t.sad += width * sad_offset[GET_FLAG(cnt_h, DMA_SRCCNT)];
+	t.sad += width * sad_delta;
 	t.dad += width * dad_offset[destcnt];
 
 	t.count++;
