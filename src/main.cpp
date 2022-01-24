@@ -23,6 +23,8 @@ int main(int argc, char **argv)
 		debug = true;
 	}
 
+	set_initial_memory_state();
+
 	load_bios_rom("../boot/gba_bios.bin");
 
 	cartridge.filename = std::string(argv[1]);
@@ -45,8 +47,6 @@ int main(int argc, char **argv)
 	if (err) {
 		return EXIT_FAILURE;
 	}
-
-	set_initial_memory_state();
 
 	//cpu.fakeboot();
 	cpu.fetch();

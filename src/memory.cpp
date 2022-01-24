@@ -40,12 +40,22 @@ void request_interrupt(u16 flag)
 	io_write<u16>(IO_IF, inter_flag);
 }
 
-void load_cartridge_rom()
+void set_initial_memory_state()
 {
 	for (u32 i = 0; i < CARTRIDGE_SIZE; i += 2) {
 		writearr<u16>(cartridge_data, i, i / 2 & 0xFFFF);
 	}
 
+	for (u32 i = 0; i < SRAM_SIZE; i++) {
+		sram_data[i] = 0xFF;
+	}
+
+	io_write<u16>(IO_KEYINPUT, 0xFFFF);
+}
+
+
+void load_cartridge_rom()
+{
 	std::ifstream f(cartridge.filename, std::ios_base::binary);
 
 	f.read((char *)cartridge_data, CARTRIDGE_SIZE);
@@ -110,11 +120,6 @@ void save_sram()
 	f.write((char *)sram_data, SRAM_SIZE);
 
 	fprintf(stderr, "saved sram to file: %s\n", cartridge.save_file.c_str());
-}
-
-void set_initial_memory_state()
-{
-	io_write<u16>(IO_KEYINPUT, 0xFFFF);
 }
 
 bool in_vram_bg(u32 offset) {
