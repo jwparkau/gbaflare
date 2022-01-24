@@ -48,6 +48,8 @@ struct CPU {
 	u32 SPSR[NUM_MODES]{};
 	u32 pc{};
 
+	bool halted{};
+
 	cpu_mode_t cpu_mode = SYSTEM;
 
 	// functions

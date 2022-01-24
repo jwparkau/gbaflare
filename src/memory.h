@@ -105,6 +105,7 @@ enum io_registers : u32 {
 	IO_IE		= 0x0400'0200,
 	IO_IF		= 0x0400'0202,
 	IO_IME		= 0x0400'0208,
+	IO_HALTCNT	= 0x0400'0301
 };
 
 enum io_request_flags : u32 {
@@ -436,6 +437,11 @@ template<typename T, int type> void mmio_write(addr_t addr, T data)
 			case IO_DMA2CNT_H + 1:
 			case IO_DMA3CNT_H + 1:
 				dma.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_HALTCNT:
+				if (new_value == 0) {
+					cpu.halted = true;
+				}
 				break;
 		}
 
