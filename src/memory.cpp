@@ -7,7 +7,6 @@
 #include <regex>
 
 Cartridge cartridge;
-Flash flash;
 
 u8 bios_data[BIOS_SIZE];
 u8 ewram_data[EWRAM_SIZE];
@@ -109,27 +108,18 @@ void save_sram()
 	fprintf(stderr, "saved sram to file: %s\n", cartridge.save_file.c_str());
 }
 
-void load_flash()
-{
-	std::ifstream f(cartridge.save_file, std::ios_base::binary);
-
-	f.read((char *)flash.flash_memory, MAX_FLASH_SIZE);
-	auto bytes_read = f.gcount();
-
-	fprintf(stderr, "flash save file: read %ld bytes\n", bytes_read);
-}
-
-void save_flash()
-{
-	std::ofstream f(cartridge.save_file, std::ios_base::binary);
-	f.write((char *)flash.flash_memory, MAX_FLASH_SIZE);
-
-	fprintf(stderr, "saved flash to file: %s\n", cartridge.save_file.c_str());
-}
-
 void set_initial_memory_state()
 {
 	io_write<u16>(IO_KEYINPUT, 0xFFFF);
+}
+
+bool in_vram_bg(u32 offset) {
+	bool bitmap_mode = (io_data[0] & 0x7) >= 3;
+	if (bitmap_mode) {
+		return offset < 0x14000;
+	} else {
+		return offset < 0x10000;
+	}
 }
 
 /*
@@ -198,12 +188,4 @@ u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
 	}
 
 	return offset;
-}
-bool in_vram_bg(u32 offset) {
-	bool bitmap_mode = (io_data[0] & 0x7) >= 3;
-	if (bitmap_mode) {
-		return offset < 0x14000;
-	} else {
-		return offset < 0x10000;
-	}
 }

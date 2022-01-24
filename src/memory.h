@@ -6,6 +6,7 @@
 #include "ppu.h"
 #include "dma.h"
 #include "cpu.h"
+#include "flash.h"
 
 #include <string>
 
@@ -180,65 +181,8 @@ void load_cartridge_rom();
 void determine_save_type();
 void load_sram();
 void save_sram();
-void load_flash();
-void save_flash();
 void set_initial_memory_state();
 bool in_vram_bg(addr_t addr);
-
-template<typename T> T readarr(u8 *arr, u32 offset)
-{
-	if constexpr (std::endian::native == std::endian::little) {
-		T x;
-		memcpy(&x, arr + offset, sizeof(T));
-
-		return x;
-	} else {
-		u8 a0 = arr[offset];
-
-		if constexpr (sizeof(T) == sizeof(u8)) {
-			return a0;
-		}
-
-		u8 a1 = arr[offset+1];
-
-		if constexpr (sizeof(T) == sizeof(u16)) {
-			return (a1 << 8) | a0;
-		}
-
-		u8 a2 = arr[offset+2];
-		u8 a3 = arr[offset+3];
-
-		return (a3 << 24) | (a2 << 16) | (a1 << 8) | a0;
-	}
-}
-
-template<typename T> void writearr(u8 *arr, u32 offset, T data)
-{
-	if constexpr (std::endian::native == std::endian::little) {
-		memcpy(arr + offset, &data, sizeof(T));
-	} else {
-		u32 x = data;
-		u32 mask = BITMASK(8);
-
-		arr[offset] = x & mask;
-
-		if constexpr (sizeof(T) == sizeof(u8)) {
-			return;
-		}
-
-		x >>= 8;
-		arr[offset+1] = x & mask;
-
-		if constexpr (sizeof(T) == sizeof(u16)) {
-			return;
-		}
-
-		x >>= 8;
-		arr[offset+2] = x & mask;
-		x >>= 8;
-		arr[offset+3] = x & mask;
-	}
-}
 
 template<typename T> T io_read(addr_t addr)
 {
@@ -250,81 +194,13 @@ template<typename T> void io_write(addr_t addr, T data)
 	writearr<T>(io_data, addr - IO_START, data);
 }
 
-enum flash_state {
-	FLASH_READY,
-	FLASH_CMD1,
-	FLASH_CMD2,
-	FLASH_ERASE,
-	FLASH_ERASE1,
-	FLASH_ERASE2,
-	FLASH_WRITE,
-	FLASH_SET_BANK
-};
-
-#define MAX_FLASH_SIZE 128_KiB
-
-struct Flash {
-	int flash_state{};
-	bool id_mode{};
-	u8 flash_memory[MAX_FLASH_SIZE]{};
-	bool flash_bank{};
-
-	void erase_page(int page) {
-		u8 *p = flash_memory;
-		if (cartridge.save_type == SAVE_FLASH128 && flash_bank) {
-			p += 64_KiB;
-		}
-		for (u32 i = page << 12; i < 4_KiB; i++) {
-			p[i] = 0xFF;
-		}
-
-	}
-	void erase_all() {
-		u8 *p = flash_memory;
-		if (cartridge.save_type == SAVE_FLASH128 && flash_bank) {
-			p += 64_KiB;
-		}
-		for (u32 i = 0; i < 64_KiB; i++) {
-			p[i] = 0xFF;
-		}
-	}
-
-	Flash() {
-		for (u32 i = 0; i < MAX_FLASH_SIZE; i++) {
-			flash_memory[i] = 0xFF;
-		}
-	}
-};
-
-extern Flash flash;
-
-template<typename T, int flash_size> T flash_read(addr_t addr)
+template<typename T, int type> T sram_read(addr_t addr)
 {
-	if (flash.id_mode) {
-		if (addr == 0x0E00'0000) {
-			if constexpr (flash_size == 64) {
-				return 0x32;
-			} else {
-				return 0x62;
-			}
-		} else if (addr == 0x0E00'0001) {
-			if constexpr (flash_size == 64) {
-				return 0x1B;
-			} else {
-				return 0x13;
-			}
-		}
+	if (cartridge.save_type != SAVE_SRAM) {
+		return 0;
 	}
 
-	u8 *p = flash.flash_memory;
-
-	if constexpr (flash_size == 128) {
-		if (flash.flash_bank) {
-			p += 64_KiB;
-		}
-	}
-
-	u8 x = p[addr % 64_KiB];
+	u32 x = readarr<u8>(sram_data, addr % SRAM_SIZE);
 
 	if constexpr (sizeof(T) == sizeof(u8)) {
 		return x;
@@ -335,96 +211,17 @@ template<typename T, int flash_size> T flash_read(addr_t addr)
 	}
 }
 
-#define A1 0xE005555
-#define A2 0xE002AAA
-
-#define TO(x) flash.flash_state = x
-
-template<typename T, int flash_size> void flash_write(addr_t addr, T data)
+template<typename T, int type> void sram_write(addr_t addr, T data)
 {
-	switch (flash.flash_state) {
-		case FLASH_ERASE:
-		case FLASH_ERASE1:
-		case FLASH_ERASE2:
-		case FLASH_WRITE:
-			if (addr == A1 && data == 0xF0) {
-				TO(FLASH_READY);
-				return;
-			}
-			break;
+	if (cartridge.save_type != SAVE_SRAM) {
+		return;
 	}
 
-	u8 *p = flash.flash_memory;
-
-	switch (flash.flash_state) {
-		case FLASH_READY:
-			if (addr == A1 && data == 0xAA) {
-				TO(FLASH_CMD1);
-			}
-			break;
-		case FLASH_CMD1:
-			if (addr == A2 && data == 0x55) {
-				TO(FLASH_CMD2);
-			}
-			break;
-		case FLASH_CMD2:
-			if (addr == A1) {
-				if (data == 0x90) {
-					flash.id_mode = true;
-					TO(FLASH_READY);
-				} else if (data == 0xF0) {
-					flash.id_mode = false;
-					TO(FLASH_READY);
-				} else if (data == 0x80) {
-					TO(FLASH_ERASE);
-				} else if (data == 0xA0) {
-					TO(FLASH_WRITE);
-				} else if (data == 0xB0) {
-					TO(FLASH_SET_BANK);
-				}
-			}
-			break;
-		case FLASH_ERASE:
-			if (addr == A1 && data == 0xAA) {
-				TO(FLASH_ERASE1);
-			}
-			break;
-		case FLASH_ERASE1:
-			if (addr == A2 && data == 0x55) {
-				TO(FLASH_ERASE2);
-			}
-			break;
-		case FLASH_ERASE2:
-			if (addr == A1 && data == 0x10) {
-				flash.erase_all();
-			} else if ((addr & 0xFFFF0FFF) == 0x0E000000 && data == 0x30) {
-				flash.erase_page(addr >> 12 & BITMASK(4));
-			}
-			TO(FLASH_READY);
-			break;
-		case FLASH_WRITE:
-			if constexpr (flash_size == 128) {
-				if (flash.flash_bank) {
-					p += 64_KiB;
-				}
-			}
-			p[addr % 64_KiB] = data;
-			TO(FLASH_READY);
-			break;
-		case FLASH_SET_BANK:
-			if (addr == 0x0E00'0000) {
-				flash.flash_bank = data;
-			}
-			TO(FLASH_READY);
-			break;
-	}
+	writearr<u8>(sram_data, addr % SRAM_SIZE, data & BITMASK(8));
 }
-#undef A1
-#undef A2
-#undef TO
 
-template<typename T, int type>
-T read(addr_t addr)
+
+template<typename T, int type> T read(addr_t addr)
 {
 	MemoryRegion region = MemoryRegion::UNUSED;
 
@@ -477,8 +274,7 @@ T read(addr_t addr)
 	return x;
 }
 
-template<typename T, int type>
-void write(addr_t addr, T data)
+template<typename T, int type> void write(addr_t addr, T data)
 {
 	MemoryRegion region = MemoryRegion::UNUSED;
 
@@ -536,8 +332,7 @@ void write(addr_t addr, T data)
 	writearr<T>(arr, offset, data);
 }
 
-template<typename T, int type>
-T mmio_read(addr_t addr)
+template<typename T, int type> T mmio_read(addr_t addr)
 {
 	u32 x = 0;
 
@@ -568,8 +363,7 @@ T mmio_read(addr_t addr)
 	return x;
 }
 
-template<typename T, int type>
-void mmio_write(addr_t addr, T data)
+template<typename T, int type> void mmio_write(addr_t addr, T data)
 {
 	u32 x = data;
 
@@ -629,56 +423,6 @@ void mmio_write(addr_t addr, T data)
 	if (update_affine_ref) {
 		ppu.copy_affine_ref();
 	}
-}
-
-template<typename T, int type>
-T sram_read(addr_t addr)
-{
-	/*
-	if (cartridge.save_type == SAVE_FLASH128) {
-		if constexpr (sizeof(T) == sizeof(u8)) {
-			if (addr == 0x0E000000) {
-				return 0x62;
-			}
-			if (addr == 0x0E000001) {
-				return 0x13;
-			}
-		}
-	} else if (cartridge.save_type == SAVE_FLASH64) {
-		if constexpr (sizeof(T) == sizeof(u8)) {
-			if (addr == 0x0E000000) {
-				return 0x32;
-			}
-			if (addr == 0x0E000001) {
-				return 0x1B;
-			}
-		}
-	}
-	*/
-
-	if (cartridge.save_type != SAVE_SRAM) {
-		return 0;
-	}
-
-	u32 x = readarr<u8>(sram_data, addr % SRAM_SIZE);
-
-	if constexpr (sizeof(T) == sizeof(u8)) {
-		return x;
-	} else if constexpr (sizeof(T) == sizeof(u16)) {
-		return x * 0x101;
-	} else {
-		return x * 0x1010101;
-	}
-}
-
-template<typename T, int type>
-void sram_write(addr_t addr, T data)
-{
-	if (cartridge.save_type != SAVE_SRAM) {
-		return;
-	}
-
-	writearr<u8>(sram_data, addr % SRAM_SIZE, data & BITMASK(8));
 }
 
 #endif

@@ -87,4 +87,59 @@ void x::write32(addr_t addr, u32 data) { write<u32, FROM_##x>(addr, data); }\
 void x::write16(addr_t addr, u16 data) { write<u16, FROM_##x>(addr, data); }\
 void x::write8(addr_t addr, u8 data) { write<u8, FROM_##x>(addr, data); }
 
+template<typename T> T readarr(u8 *arr, u32 offset)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		T x;
+		memcpy(&x, arr + offset, sizeof(T));
+
+		return x;
+	} else {
+		u8 a0 = arr[offset];
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return a0;
+		}
+
+		u8 a1 = arr[offset+1];
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return (a1 << 8) | a0;
+		}
+
+		u8 a2 = arr[offset+2];
+		u8 a3 = arr[offset+3];
+
+		return (a3 << 24) | (a2 << 16) | (a1 << 8) | a0;
+	}
+}
+
+template<typename T> void writearr(u8 *arr, u32 offset, T data)
+{
+	if constexpr (std::endian::native == std::endian::little) {
+		memcpy(arr + offset, &data, sizeof(T));
+	} else {
+		u32 x = data;
+		u32 mask = BITMASK(8);
+
+		arr[offset] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+1] = x & mask;
+
+		if constexpr (sizeof(T) == sizeof(u16)) {
+			return;
+		}
+
+		x >>= 8;
+		arr[offset+2] = x & mask;
+		x >>= 8;
+		arr[offset+3] = x & mask;
+	}
+}
+
 #endif

@@ -20,6 +20,7 @@ target_sources(gbaflare PUBLIC
 	timer.cpp
 	scheduler.cpp
 	dma.cpp
+	flash.cpp
 )
 
 target_include_directories(gbaflare PUBLIC
