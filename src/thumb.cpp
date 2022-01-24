@@ -387,7 +387,7 @@ void thumb_loadstore_reg(u16 op)
 		if (rem) {
 			*rd = (s8)cpu.read8(address);
 		} else {
-			*rd = (s16)cpu.read16(align(address, 2));
+			*rd = (s16)cpu.read16_noalign(address);
 		}
 	}
 }

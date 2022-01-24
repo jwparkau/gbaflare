@@ -318,7 +318,7 @@ void CPU::dump_registers()
 u32 CPU::read32_noalign(addr_t addr)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
-		return read32(addr);
+		return sram_area_read<u32, FROM_CPU>(addr);
 	}
 
 	return read32(align(addr, 4));
@@ -327,7 +327,7 @@ u32 CPU::read32_noalign(addr_t addr)
 u16 CPU::read16_noalign(addr_t addr)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
-		return read16(addr);
+		return sram_area_read<u16, FROM_CPU>(addr);
 	}
 
 	return read16(align(addr, 2));
@@ -339,7 +339,7 @@ void CPU::write32_noalign(addr_t addr, u32 data)
 		bool c;
 		int rem = addr % 4;
 		data = ror(data, rem * 8, c);
-		write8(addr, data);
+		sram_area_write<u8, FROM_CPU>(addr, data);
 	} else {
 		write32(align(addr, 4), data);
 	}
@@ -351,7 +351,7 @@ void CPU::write16_noalign(addr_t addr, u16 data)
 		bool c;
 		int rem = addr % 2;
 		data = ror(data, rem * 8, c);
-		write8(addr, data);
+		sram_area_write<u8, FROM_CPU>(addr, data);
 	} else {
 		write16(align(addr, 2), data);
 	}

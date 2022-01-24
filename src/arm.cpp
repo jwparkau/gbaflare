@@ -548,7 +548,7 @@ void arm_misc_dt(u32 op)
 			if (rem) {
 				*rd = (s8)cpu.read8(address);
 			} else {
-				*rd = (s16)cpu.read16(align(address, 2));
+				*rd = (s16)cpu.read16_noalign(address);
 			}
 		} else {
 			bool c;
@@ -604,7 +604,7 @@ void arm_block_dt(u32 op)
 		READ_MULTIPLE(14);
 
 		if (register_list & BIT(15)) {
-			WRITE_PC(cpu.read32(address) & 0xFFFF'FFFC);
+			WRITE_PC(cpu.read32_noalign(address) & 0xFFFF'FFFC);
 		}
 
 	} else if (load == 1 && writeback == 0 && psr == 1 && !(op & BIT(15))) {

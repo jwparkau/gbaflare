@@ -33,6 +33,51 @@ u8 *const region_to_data[NUM_REGIONS] = {
 	sram_data
 };
 
+u8 *const region_to_data_write[NUM_REGIONS] = {
+	nullptr,
+	nullptr,
+	ewram_data,
+	iwram_data,
+	io_data,
+	palette_data,
+	vram_data,
+	oam_data,
+	nullptr,
+	sram_data
+};
+
+const int addr_to_region[16] = {
+	MemoryRegion::BIOS,
+	MemoryRegion::UNUSED,
+	MemoryRegion::EWRAM,
+	MemoryRegion::IWRAM,
+	MemoryRegion::IO,
+	MemoryRegion::PALETTE_RAM,
+	MemoryRegion::VRAM,
+	MemoryRegion::OAM,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::CARTRIDGE,
+	MemoryRegion::SRAM,
+	MemoryRegion::SRAM
+};
+
+const u32 region_to_offset_mask[NUM_REGIONS] = {
+	0,
+	0x3FFF,
+	0x3FFFF,
+	0x7FFF,
+	0x3FF,
+	0x3FF,
+	0x1FFFF,
+	0x3FF,
+	0x1FFFFFF,
+	0xFFFF
+};
+
 void request_interrupt(u16 flag)
 {
 	u16 inter_flag = io_read<u16>(IO_IF);
@@ -129,72 +174,4 @@ bool in_vram_bg(u32 offset) {
 	} else {
 		return offset < 0x10000;
 	}
-}
-
-/*
- * Use a software cache later to make things faster
- */
-u32 resolve_memory_address(addr_t addr, MemoryRegion &region)
-{
-	region = MemoryRegion::UNUSED;
-	u32 offset = 0;
-
-	switch (addr >> 24) {
-		case 0x00:
-			if (addr < BIOS_END) {
-				region = MemoryRegion::BIOS;
-				offset = addr;
-			}
-			break;
-		case 0x02:
-			region = MemoryRegion::EWRAM;
-			offset = addr % EWRAM_SIZE;
-			break;
-		case 0x03:
-			region = MemoryRegion::IWRAM;
-			offset = addr % IWRAM_SIZE;
-			break;
-		case 0x04:
-			if (addr < IO_END) {
-				region = MemoryRegion::IO;
-				offset = addr & BITMASK(24);
-			} else if ((addr & 0xFFFF) == 0x0800) {
-				region = MemoryRegion::IO;
-				offset = 0x0800;
-			}
-			break;
-		case 0x05:
-			region = MemoryRegion::PALETTE_RAM;
-			offset = addr % PALETTE_RAM_SIZE;
-			break;
-		case 0x06:
-			region = MemoryRegion::VRAM;
-			offset = addr % (VRAM_SIZE + 32_KiB);
-			if (offset >= VRAM_SIZE) {
-				offset -= 32_KiB;
-			}
-			break;
-		case 0x07:
-			region = MemoryRegion::OAM;
-			offset = addr % OAM_SIZE;
-			break;
-		case 0x08:
-		case 0x09:
-		case 0x0A:
-		case 0x0B:
-		case 0x0C:
-		case 0x0D:
-			region = MemoryRegion::CARTRIDGE;
-			offset = addr % CARTRIDGE_SIZE;
-			break;
-		case 0x0E:
-		case 0x0F:
-			region = MemoryRegion::SRAM;
-			offset = addr % SRAM_SIZE;
-			break;
-		default:
-			region = MemoryRegion::UNUSED;
-	}
-
-	return offset;
 }
