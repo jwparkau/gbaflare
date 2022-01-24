@@ -28,12 +28,23 @@ void DMA::step_channel(int ch)
 	int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
 
 	if (width == 4) {
-		x = read32(t.sad);
-		write32(t.dad, x);
+		if (t.sad < 0x0200'0000) {
+			write32(t.dad, last_value[ch]);
+		} else {
+			x = read32(t.sad);
+			write32(t.dad, x);
+			last_value[ch] = x;
+		}
 	} else {
-		x = read16(t.sad);
-		write16(t.dad, x);
+		if (t.sad < 0x0200'0000) {
+			write16(t.dad, last_value[ch]);
+		} else {
+			x = read16(t.sad);
+			write16(t.dad, x);
+			last_value[ch] = x * 0x10001;
+		}
 	}
+
 
 	int destcnt = GET_FLAG(cnt_h, DMA_DESTCNT);
 
@@ -94,8 +105,6 @@ u32 DMA::load_dad(int ch)
 
 void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 {
-	//printf("DMA write %02X for channel %d\n", new_value, (addr - IO_DMA0CNT_H) / 0xC);
-
 	int ch = (addr - IO_DMA0CNT_H - 1) / 12;
 
 	if (GET_FLAG(new_value << 8, DMA_ENABLED) && !GET_FLAG(old_value << 8, DMA_ENABLED)) {
@@ -116,9 +125,7 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 
 		transfers[ch] = {sad, dad, cnt_l, 0};
 
-
 		if (GET_FLAG(new_value << 8, DMA_TRIGGER) == 0) {
-			//printf("ch %d, %08X -> %08X, %d count, cnt_h %04X, old %02X, new %02X\n", ch, sad, dad, cnt_l, cnt_h, old_value, new_value);
 			dma_active |= BIT(ch);
 		}
 	} else if (!GET_FLAG(new_value << 8, DMA_ENABLED) && GET_FLAG(old_value << 8, DMA_ENABLED)) {

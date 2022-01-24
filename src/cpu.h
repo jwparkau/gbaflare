@@ -47,7 +47,6 @@ struct CPU {
 	u32 CPSR{};
 	u32 SPSR[NUM_MODES]{};
 	u32 pc{};
-	int addr_rem{};
 
 	cpu_mode_t cpu_mode = SYSTEM;
 

@@ -268,10 +268,6 @@ template<typename T, int type> T read(addr_t addr)
 
 	T x = readarr<T>(arr, offset);
 
-	if constexpr (type == FROM_DMA) {
-		dma.last_value[dma.channel] = x;
-	}
-
 	return x;
 }
 
@@ -355,10 +351,6 @@ template<typename T, int type> T mmio_read(addr_t addr)
 		}
 
 		x |= value << (i * 8);
-	}
-
-	if constexpr (type == FROM_DMA) {
-		dma.last_value[dma.channel] = x;
 	}
 
 	return x;

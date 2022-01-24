@@ -337,8 +337,8 @@ void CPU::write32_noalign(addr_t addr, u32 data)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
-		addr_rem = addr % 4;
-		data = ror(data, addr_rem * 8, c);
+		int rem = addr % 4;
+		data = ror(data, rem * 8, c);
 		write8(addr, data);
 	} else {
 		write32(align(addr, 4), data);
@@ -349,8 +349,8 @@ void CPU::write16_noalign(addr_t addr, u16 data)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
-		addr_rem = addr % 2;
-		data = ror(data, addr_rem * 8, c);
+		int rem = addr % 2;
+		data = ror(data, rem * 8, c);
 		write8(addr, data);
 	} else {
 		write16(align(addr, 2), data);
