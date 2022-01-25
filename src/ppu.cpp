@@ -327,10 +327,8 @@ void PPU::setup_window(int n)
 		if (should_push_pixel(bg, j, blend)) {\
 			pixel_info pixel{color, priority, bg, false, bg, blend, false};\
 			pixel_info other = bufferA[i*LCD_WIDTH + j];\
-			if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {\
-				bufferA[i*LCD_WIDTH + j] = pixel;\
-				bufferB[i*LCD_WIDTH + j] = other;\
-			}\
+			bufferA[i*LCD_WIDTH + j] = pixel;\
+			bufferB[i*LCD_WIDTH + j] = other;\
 		}\
 	}
 
@@ -379,43 +377,109 @@ void PPU::render_text_bg(int bg, int priority)
 	bool color_8 = GET_FLAG(bgcnt, BG_PALETTE);
 
 	int i = ly;
-	for ITERATE_LINE {
-		int bx = (dx + j) % w;
-		int by = (dy + i) % h;
+	int bx = dx % w;
+	int by = (dy + i) % h;
 
-		if (use_mosaic) {
-			bx = align(bx, mosaic_h+1);
-			by = align(by, mosaic_v+1);
+	if (use_mosaic) {
+		by = (dy + align(ly, mosaic_v+1)) % h;
+	}
+
+	int ty = (by % 256) / 8;
+	int py = by % 8;
+
+	int sc = (by / 256)*2 + (bx / 256);
+	if (screen_size == 2) {
+		sc /= 2;
+	}
+
+	int j = -(dx % 256);
+	int tx = 0;
+
+	u32 se_offset, tile_offset;
+	u16 se, color;
+	int tile_number, palette_bank, ppy, pstart, pend, pdelta, px;
+	int palette_offset, palette_number = 0;
+	int blend;
+	pixel_info pixel, other;
+	u16 last_mosaic_color = 0;
+
+bg_reg_sc_block_start:
+
+	for (; tx < 32; tx++) {
+		se_offset = tilemap_base + sc*2_KiB + 2*(ty*32 + tx);
+		se = readarr<u16>(vram_data, se_offset);
+
+		tile_number = GET_FLAG(se, SE_TILENUMBER);
+		palette_bank = GET_FLAG(se, SE_PALETTE_NUMBER);
+
+		if (GET_FLAG(se, SE_VFLIP)) {
+			ppy = 7-py;
+		} else {
+			ppy = py;
 		}
 
-		int sc = (by / 256)*2 + (bx / 256);
-		if (screen_size == 2) {
-			sc /= 2;
+		if (color_8) {
+			tile_offset = tileset_base + (u32)tile_number*64 + ppy*8;
+		} else {
+			tile_offset = tileset_base + (u32)tile_number*32 + ppy*4;
 		}
-
-		int tx = (bx % 256) / 8;
-		int ty = (by % 256) / 8;
-
-		int px = bx % 8;
-		int py = by % 8;
-
-		u32 se_offset = tilemap_base + sc*2_KiB + 2*(ty*32 + tx);
-		u16 se = readarr<u16>(vram_data, se_offset);
 
 		if (GET_FLAG(se, SE_HFLIP)) {
-			px = 7 - px;
+			pstart = 7;
+			pend = -1;
+			pdelta = -1;
+		} else {
+			pstart = 0;
+			pend = 8;
+			pdelta = 1;
 		}
-		if (GET_FLAG(se, SE_VFLIP)) {
-			py = 7 - py;
+
+		for (px = pstart; px != pend; px += pdelta, j++) {
+			if (j > LCD_WIDTH) {
+				goto bg_reg_end;
+			}
+
+			if (j < 0) {
+				continue;
+			}
+
+			if (use_mosaic && j % (mosaic_h+1) != 0) {
+				color = last_mosaic_color;
+				goto bg_reg_push_pixel;
+			}
+
+			if (color_8) {
+				palette_offset = palette_number = readarr<u8>(vram_data, tile_offset + px);
+			} else {
+				palette_number = readarr<u8>(vram_data, tile_offset + px/2) >> (px%2*4) & BITMASK(4);
+				palette_offset = palette_bank*16 + palette_number;
+			}
+
+			color = readarr<u16>(palette_data, palette_offset*2);
+			last_mosaic_color = color;
+bg_reg_push_pixel:
+
+			if (palette_number != 0 && tile_offset < 0x10000) {
+				if (should_push_pixel(bg, j, blend)) {
+					pixel = {color, priority, bg, false, bg, blend, false};
+					other = bufferA[i*LCD_WIDTH + j];
+					bufferA[i*LCD_WIDTH + j] = pixel;
+					bufferB[i*LCD_WIDTH + j] = other;
+				}
+			}
 		}
-
-		int tile_number = GET_FLAG(se, SE_TILENUMBER);
-		int palette_bank = GET_FLAG(se, SE_PALETTE_NUMBER);
-
-		GET_PALETTE_OFFSET_BG_REGULAR;
-
-		PUSH_BG_PIXEL;
 	}
+
+	if (j < LCD_WIDTH) {
+		tx = 0;
+		if (w > 256) {
+			sc ^= 1;
+		}
+		goto bg_reg_sc_block_start;
+	}
+
+bg_reg_end:
+	;
 }
 
 void PPU::render_affine_bg(int bg, int priority)
@@ -746,7 +810,7 @@ template <bool is_affine> void PPU::render_sprite(int i)
 				pixel_info pixel{color, priority, i, false, LAYER_OBJ, 0, gfx_mode == 1};
 				pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
 
-				if (pixel.priority < other.priority || (pixel.priority == other.priority && pixel.bg < other.bg)) {
+				if (pixel.priority <= other.priority) {
 					obj_buffer[ly*LCD_WIDTH + j] = pixel;
 				}
 			}

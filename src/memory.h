@@ -225,9 +225,9 @@ template<typename T, int type> T sram_area_read(addr_t addr)
 		return flash_read<T, 64>(addr);
 	} else if (save_type == SAVE_FLASH128) {
 		return flash_read<T, 128>(addr);
-	} else {
-		return BITMASK(sizeof(T) * 8);
 	}
+
+	return BITMASK(sizeof(T) * 8);
 }
 
 template<typename T, int type> void sram_area_write(addr_t addr, T data)
@@ -273,15 +273,7 @@ template<typename T, int type> T read(addr_t addr)
 	u32 offset = addr & region_to_offset_mask[region];
 
 	if (region == MemoryRegion::SRAM) {
-		if (cartridge.save_type == SAVE_SRAM) {
-			return sram_read<T, type>(addr);
-		} else if (cartridge.save_type == SAVE_FLASH64) {
-			return flash_read<T, 64>(addr);
-		} else if (cartridge.save_type == SAVE_FLASH128) {
-			return flash_read<T, 128>(addr);
-		} else {
-			return BITMASK(sizeof(T) * 8);
-		}
+		return sram_area_read<T, type>(addr);
 	}
 
 	if (!arr) {
@@ -331,13 +323,7 @@ template<typename T, int type> void write(addr_t addr, T data)
 	}
 
 	if (region == MemoryRegion::SRAM) {
-		if (cartridge.save_type == SAVE_SRAM) {
-			sram_write<T, type>(addr, data);
-		} else if (cartridge.save_type == SAVE_FLASH64) {
-			flash_write<T, 64>(addr, data);
-		} else if (cartridge.save_type == SAVE_FLASH128) {
-			flash_write<T, 128>(addr, data);
-		}
+		sram_area_write<T, type>(addr, data);
 		return;
 	}
 
