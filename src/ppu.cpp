@@ -436,7 +436,7 @@ bg_reg_sc_block_start:
 
 		for (px = pstart; px != pend; px += pdelta, j++) {
 			if (j > LCD_WIDTH) {
-				goto bg_reg_end;
+				return;
 			}
 
 			if (j < 0) {
@@ -445,19 +445,17 @@ bg_reg_sc_block_start:
 
 			if (use_mosaic && j % (mosaic_h+1) != 0) {
 				color = last_mosaic_color;
-				goto bg_reg_push_pixel;
-			}
-
-			if (color_8) {
-				palette_offset = palette_number = readarr<u8>(vram_data, tile_offset + px);
 			} else {
-				palette_number = readarr<u8>(vram_data, tile_offset + px/2) >> (px%2*4) & BITMASK(4);
-				palette_offset = palette_bank*16 + palette_number;
-			}
+				if (color_8) {
+					palette_offset = palette_number = readarr<u8>(vram_data, tile_offset + px);
+				} else {
+					palette_number = readarr<u8>(vram_data, tile_offset + px/2) >> (px%2*4) & BITMASK(4);
+					palette_offset = palette_bank*16 + palette_number;
+				}
 
-			color = readarr<u16>(palette_data, palette_offset*2);
-			last_mosaic_color = color;
-bg_reg_push_pixel:
+				color = readarr<u16>(palette_data, palette_offset*2);
+				last_mosaic_color = color;
+			}
 
 			if (palette_number != 0 && tile_offset < 0x10000) {
 				if (should_push_pixel(bg, j, blend)) {
@@ -477,9 +475,6 @@ bg_reg_push_pixel:
 		}
 		goto bg_reg_sc_block_start;
 	}
-
-bg_reg_end:
-	;
 }
 
 void PPU::render_affine_bg(int bg, int priority)

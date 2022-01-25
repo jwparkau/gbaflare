@@ -28,7 +28,7 @@ target_include_directories(gbaflare PUBLIC
 )
 
 
-target_compile_options(gbaflare-release PUBLIC -Wall -Wextra -Winline -O3)
+target_compile_options(gbaflare-release PUBLIC -Wall -Wextra -Winline -O3 -march=native)
 
 set_target_properties(gbaflare-release
     PROPERTIES
