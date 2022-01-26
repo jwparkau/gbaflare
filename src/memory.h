@@ -7,6 +7,7 @@
 #include "dma.h"
 #include "cpu.h"
 #include "flash.h"
+#include "platform.h"
 
 #include <string>
 
@@ -369,6 +370,13 @@ template<typename T, int type> T mmio_read(addr_t addr)
 			case IO_TM3CNT_L:
 			case IO_TM3CNT_L+1:
 				value = timer.on_read(addr + i);
+				break;
+			case IO_KEYINPUT:
+				value = joypad_state & BITMASK(8);
+				break;
+			case IO_KEYINPUT+1:
+				value = joypad_state >> 8;
+				break;
 		}
 
 		x |= value << (i * 8);

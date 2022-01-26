@@ -1,3 +1,5 @@
+#include "main.h"
+
 #include <iostream>
 #include <memory>
 
@@ -10,19 +12,8 @@
 #include "scheduler.h"
 #include "dma.h"
 
-int main(int argc, char **argv)
+void main_loop(char **argv)
 {
-	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
-
-	if (argc != 2 && argc != 3) {
-		fprintf(stderr, "no cartridge file specified\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (argc == 3) {
-		debug = true;
-	}
-
 	set_initial_memory_state();
 
 	load_bios_rom("../boot/gba_bios.bin");
@@ -43,18 +34,13 @@ int main(int argc, char **argv)
 			break;
 	}
 
-	int err = platform_init();
-	if (err) {
-		return EXIT_FAILURE;
-	}
-
 	//cpu.fakeboot();
 	cpu.fetch();
 	cpu.fetch();
 
 	next_event = 960;
 
-	platform_on_vblank();
+	//platform_on_vblank();
 
 	for (;;) {
 		if (!emulator_running) {
@@ -86,6 +72,4 @@ int main(int argc, char **argv)
 			save_flash();
 			break;
 	}
-
-	return 0;
 }

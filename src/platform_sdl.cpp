@@ -128,9 +128,9 @@ void Platform::handle_input()
 		}
 
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_0) {
-			throttle_enabled ^= 1;
+			throttle_enabled = !throttle_enabled;
 		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_p) {
-			print_fps ^= 1;
+			print_fps = !print_fps;
 		}
 
 		switch (e.type) {

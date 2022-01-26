@@ -27,4 +27,9 @@ if (USE_SDL2)
 	target_link_libraries(gbaflare-release SDL2::SDL2)
 endif()
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(gbaflare Threads::Threads)
+target_link_libraries(gbaflare-release Threads::Threads)
+
 add_subdirectory(src)
