@@ -246,77 +246,90 @@ template<typename T, int type> void sram_area_write(addr_t addr, T data)
 
 template<typename T, int type> T read(addr_t addr)
 {
+	T ret = BITMASK(sizeof(T) * 8);
+	int region;
+	u8 *arr;
+	u32 offset;
+
 	if constexpr (type == FROM_CPU) {
 		if (addr < 0x4000) {
 			if (cpu.pc - 8 >= 0x4000) {
 				if constexpr (sizeof(T) == sizeof(u8)) {
-					return last_bios_opcode >> (addr % 4 * 8);
+					ret = last_bios_opcode >> (addr % 4 * 8);
+					goto read_end;
 				} else {
-					return last_bios_opcode;
+					ret = last_bios_opcode;
+					goto read_end;
 				}
 			}
 		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
-			u32 x = read<u32, ALLOW_ALL>(cpu.pc);
+			u32 op = read<u32, ALLOW_ALL>(cpu.pc);
 			if constexpr (sizeof(T) == sizeof(u8)) {
-				return x >> (addr % 4 * 8);
+				ret = op >> (addr % 4 * 8);
 			} else {
-				return x;
+				ret = op;
 			}
+			goto read_end;
 		}
 	}
 
 	if (addr >= 0x1000'0000) {
-		return BITMASK(sizeof(T) * 8);
+		goto read_end;
 	}
 
-	int region = addr_to_region[addr >> 24];
-	u8 *arr = region_to_data[region];
-	u32 offset = addr & region_to_offset_mask[region];
-
-	if (region == MemoryRegion::SRAM) {
-		return sram_area_read<T, type>(addr);
-	}
+	region = addr_to_region[addr >> 24];
+	arr = region_to_data[region];
+	offset = addr & region_to_offset_mask[region];
 
 	if (!arr) {
-		return BITMASK(sizeof(T) * 8);
+		goto read_end;
+	}
+
+	if (region == MemoryRegion::SRAM) {
+		ret = sram_area_read<T, type>(addr);
+		goto read_end;
 	}
 
 	if (region == MemoryRegion::IO) {
 		if (addr < 0x0400'0400) {
-			return mmio_read<T, type>(addr);
-		} else {
-			return BITMASK(sizeof(T) * 8);
+			ret = mmio_read<T, type>(addr);
 		}
+		goto read_end;
 	}
 
 	if (region == MemoryRegion::VRAM && offset >= 96_KiB) {
 		offset -= 32_KiB;
 	}
 
-	T x = readarr<T>(arr, offset);
+	ret = readarr<T>(arr, offset);
 
-	return x;
+read_end:
+	return ret;
 }
 
 template<typename T, int type> void write(addr_t addr, T data)
 {
+	int region;
+	u8 *arr;
+	u32 offset;
+
 	if (addr >= 0x1000'0000) {
-		return;
+		goto write_end;
 	}
 
-	int region = addr_to_region[addr >> 24];
-	u8 *arr = region_to_data_write[region];
-	u32 offset = addr & region_to_offset_mask[region];
+	region = addr_to_region[addr >> 24];
+	arr = region_to_data_write[region];
+	offset = addr & region_to_offset_mask[region];
 
 	if (!arr) {
-		return;
+		goto write_end;
 	}
 
 	if (region == MemoryRegion::IO) {
 		if (addr < 0x0400'0400) {
 			mmio_write<T, type>(addr, data);
 		}
-		return;
+		goto write_end;
 	}
 
 	if (region == MemoryRegion::VRAM && offset >= 96_KiB) {
@@ -325,30 +338,30 @@ template<typename T, int type> void write(addr_t addr, T data)
 
 	if (region == MemoryRegion::SRAM) {
 		sram_area_write<T, type>(addr, data);
-		return;
+		goto write_end;
 	}
 
 	if constexpr (sizeof(T) == sizeof(u8)) {
 		if (region == MemoryRegion::OAM) {
-			return;
+			goto write_end;
 		}
 
 		if (region == MemoryRegion::VRAM) {
-			if (!in_vram_bg(offset)) {
-				return;
-			} else {
+			if (in_vram_bg(offset)) {
 				writearr<u16>(arr, align(offset, 2), data * 0x101);
-				return;
 			}
+			goto write_end;
 		}
 
 		if (region == MemoryRegion::PALETTE_RAM) {
 			writearr<u16>(arr, align(offset, 2), data * 0x101);
-			return;
+			goto write_end;
 		}
 	}
 
 	writearr<T>(arr, offset, data);
+write_end:
+	;
 }
 
 template<typename T, int type> T mmio_read(addr_t addr)
