@@ -56,6 +56,8 @@ int Platform::init()
 	add_controller();
 
 	emulator_running = true;
+
+	render(real_framebuffer);
 	return PLATFORM_INIT_SUCCESS;
 
 init_failed:

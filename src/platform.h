@@ -20,7 +20,7 @@ extern std::atomic_bool print_fps;
 extern std::atomic_uint16_t joypad_state;
 
 extern u16 framebuffer[FRAMEBUFFER_SIZE];
-extern u16 framebuffer_real[FRAMEBUFFER_SIZE];
+extern u16 real_framebuffer[FRAMEBUFFER_SIZE];
 
 extern std::binary_semaphore frame_rendered, frame_drawn;
 extern std::mutex f_lock;
