@@ -198,7 +198,7 @@ template<typename T> void io_write(addr_t addr, T data)
 	writearr<T>(io_data, addr - IO_START, data);
 }
 
-template<typename T, int type> T sram_read(addr_t addr)
+template<typename T, int whence> T sram_read(addr_t addr)
 {
 	u32 x = readarr<u8>(sram_data, addr % SRAM_SIZE);
 
@@ -211,17 +211,17 @@ template<typename T, int type> T sram_read(addr_t addr)
 	}
 }
 
-template<typename T, int type> void sram_write(addr_t addr, T data)
+template<typename T, int whence> void sram_write(addr_t addr, T data)
 {
 	writearr<u8>(sram_data, addr % SRAM_SIZE, data & BITMASK(8));
 }
 
-template<typename T, int type> T sram_area_read(addr_t addr)
+template<typename T, int whence> T sram_area_read(addr_t addr)
 {
 	auto save_type = cartridge.save_type;
 
 	if (save_type == SAVE_SRAM) {
-		return sram_read<T, type>(addr);
+		return sram_read<T, whence>(addr);
 	} else if (save_type == SAVE_FLASH64) {
 		return flash_read<T, 64>(addr);
 	} else if (save_type == SAVE_FLASH128) {
@@ -231,12 +231,12 @@ template<typename T, int type> T sram_area_read(addr_t addr)
 	return BITMASK(sizeof(T) * 8);
 }
 
-template<typename T, int type> void sram_area_write(addr_t addr, T data)
+template<typename T, int whence> void sram_area_write(addr_t addr, T data)
 {
 	auto save_type = cartridge.save_type;
 
 	if (save_type == SAVE_SRAM) {
-		sram_write<T, type>(addr, data);
+		sram_write<T, whence>(addr, data);
 	} else if (save_type == SAVE_FLASH64) {
 		flash_write<T, 64>(addr, data);
 	} else if (save_type == SAVE_FLASH128) {
@@ -244,14 +244,14 @@ template<typename T, int type> void sram_area_write(addr_t addr, T data)
 	}
 }
 
-template<typename T, int type> T read(addr_t addr)
+template<typename T, int whence> T read(addr_t addr)
 {
 	T ret = BITMASK(sizeof(T) * 8);
 	int region;
 	u8 *arr;
 	u32 offset;
 
-	if constexpr (type == FROM_CPU) {
+	if constexpr (whence == FROM_CPU) {
 		if (addr < 0x4000) {
 			if (cpu.pc - 8 >= 0x4000) {
 				if constexpr (sizeof(T) == sizeof(u8)) {
@@ -286,13 +286,13 @@ template<typename T, int type> T read(addr_t addr)
 	}
 
 	if (region == MemoryRegion::SRAM) {
-		ret = sram_area_read<T, type>(addr);
+		ret = sram_area_read<T, whence>(addr);
 		goto read_end;
 	}
 
 	if (region == MemoryRegion::IO) {
 		if (addr < 0x0400'0400) {
-			ret = mmio_read<T, type>(addr);
+			ret = mmio_read<T, whence>(addr);
 		}
 		goto read_end;
 	}
@@ -307,7 +307,7 @@ read_end:
 	return ret;
 }
 
-template<typename T, int type> void write(addr_t addr, T data)
+template<typename T, int whence> void write(addr_t addr, T data)
 {
 	int region;
 	u8 *arr;
@@ -327,7 +327,7 @@ template<typename T, int type> void write(addr_t addr, T data)
 
 	if (region == MemoryRegion::IO) {
 		if (addr < 0x0400'0400) {
-			mmio_write<T, type>(addr, data);
+			mmio_write<T, whence>(addr, data);
 		}
 		goto write_end;
 	}
@@ -337,7 +337,7 @@ template<typename T, int type> void write(addr_t addr, T data)
 	}
 
 	if (region == MemoryRegion::SRAM) {
-		sram_area_write<T, type>(addr, data);
+		sram_area_write<T, whence>(addr, data);
 		goto write_end;
 	}
 
@@ -364,7 +364,7 @@ write_end:
 	;
 }
 
-template<typename T, int type> T mmio_read(addr_t addr)
+template<typename T, int whence> T mmio_read(addr_t addr)
 {
 	u32 x = 0;
 
@@ -398,7 +398,7 @@ template<typename T, int type> T mmio_read(addr_t addr)
 	return x;
 }
 
-template<typename T, int type> void mmio_write(addr_t addr, T data)
+template<typename T, int whence> void mmio_write(addr_t addr, T data)
 {
 	u32 x = data;
 
