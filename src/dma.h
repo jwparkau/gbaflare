@@ -22,6 +22,20 @@
 #define DMA_ENABLED_MASK 1
 #define DMA_ENABLED_SHIFT 15
 
+enum dma_triggers {
+	DMA_TRIGGER_NOW,
+	DMA_TRIGGER_VBLANK,
+	DMA_TRIGGER_HBLANK,
+	DMA_TRIGGER_SPECIAL
+};
+
+enum dma_addr_ctrl {
+	DMA_INCREMENT,
+	DMA_DECREMENT,
+	DMA_FIXED,
+	DMA_RELOAD
+};
+
 enum dma_channels {
 	DMA_0	= 0x1,
 	DMA_1	= 0x2,
@@ -33,6 +47,7 @@ struct dma_transfer {
 	u32 sad;
 	u32 dad;
 	u32 cnt_l;
+	u32 cnt_h;
 	u32 count;
 };
 

@@ -21,11 +21,10 @@ void DMA::step()
 
 void DMA::step_channel(int ch)
 {
-	u16 cnt_h = get_cnt_h(ch);
 	auto &t = transfers[ch];
 
 	u32 x;
-	int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
+	int width = GET_FLAG(t.cnt_h, DMA_TRANSFER32) ? 4 : 2;
 
 	if (width == 4) {
 		if (t.sad < 0x0200'0000) {
@@ -45,8 +44,8 @@ void DMA::step_channel(int ch)
 		}
 	}
 
-	int destcnt = GET_FLAG(cnt_h, DMA_DESTCNT);
-	int sad_delta = sad_offset[GET_FLAG(cnt_h, DMA_SRCCNT)];
+	int destcnt = GET_FLAG(t.cnt_h, DMA_DESTCNT);
+	int sad_delta = sad_offset[GET_FLAG(t.cnt_h, DMA_SRCCNT)];
 	if (t.sad >= 0x0800'0000 && t.sad < 0x0E00'0000) {
 		sad_delta = 1;
 	}
@@ -58,11 +57,11 @@ void DMA::step_channel(int ch)
 
 	if (t.count >= t.cnt_l) {
 		t.count = 0;
-		if (GET_FLAG(cnt_h, DMA_SEND_IRQ)) {
+		if (GET_FLAG(t.cnt_h, DMA_SEND_IRQ)) {
 			request_interrupt(IRQ_DMA0 * BIT(ch));
 		}
 
-		if (GET_FLAG(cnt_h, DMA_REPEAT) && GET_FLAG(cnt_h, DMA_TRIGGER) != 0) {
+		if (GET_FLAG(t.cnt_h, DMA_REPEAT) && GET_FLAG(t.cnt_h, DMA_TRIGGER) != DMA_TRIGGER_NOW) {
 			t.cnt_l = load_cnt_l(ch);
 			if (destcnt == 3) {
 				t.dad = load_dad(ch);
@@ -109,6 +108,7 @@ u32 DMA::load_dad(int ch)
 void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 {
 	int ch = (addr - IO_DMA0CNT_H - 1) / 12;
+	u16 cnt_h = new_value << 8 | io_read<u8>(IO_DMA0CNT_H + ch*12);
 
 	if (GET_FLAG(new_value << 8, DMA_ENABLED) && !GET_FLAG(old_value << 8, DMA_ENABLED)) {
 		u32 sad = io_read<u32>(IO_DMA0SAD + ch*12);
@@ -121,14 +121,19 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 			sad &= BITMASK(28);
 		}
 
-		u16 cnt_h = new_value << 8 | io_read<u8>(IO_DMA0CNT_H + ch*12);
 		int width = GET_FLAG(cnt_h, DMA_TRANSFER32) ? 4 : 2;
+		int trigger = GET_FLAG(cnt_h, DMA_TRIGGER);
+		if (trigger == DMA_TRIGGER_SPECIAL && (ch == 1 || ch == 2)) {
+			width = 4;
+			cnt_l = 4;
+			SET_FLAG(cnt_h, DMA_DESTCNT, DMA_FIXED);
+		}
 		sad = align(sad, width);
 		dad = align(dad, width);
 
-		transfers[ch] = {sad, dad, cnt_l, 0};
+		transfers[ch] = {sad, dad, cnt_l, cnt_h, 0};
 
-		if (GET_FLAG(new_value << 8, DMA_TRIGGER) == 0) {
+		if (trigger == DMA_TRIGGER_NOW) {
 			dma_active |= BIT(ch);
 		}
 	} else if (!GET_FLAG(new_value << 8, DMA_ENABLED) && GET_FLAG(old_value << 8, DMA_ENABLED)) {
