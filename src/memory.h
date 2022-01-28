@@ -145,13 +145,15 @@ enum MemoryRegion {
 enum MemoryAccessFrom {
 	FROM_CPU,
 	FROM_DMA,
+	FROM_FETCH,
 	ALLOW_ALL
 };
 
 enum MemoryAccessType {
 	NSEQ,
 	SEQ,
-	NODELAY
+	NODELAY,
+	NOCYCLES
 };
 
 enum SaveType {
@@ -321,7 +323,9 @@ template<typename T, int whence, int type> T read(addr_t addr)
 	ret = readarr<T>(arr, offset);
 
 read_end:
-	if constexpr (type != NODELAY) {
+	if constexpr (type == NOCYCLES) {
+		;
+	} else {
 		int width_index;
 		if constexpr (sizeof(T) == sizeof(u8)) {
 			width_index = 0;
@@ -330,8 +334,13 @@ read_end:
 		} else {
 			width_index = 2;
 		}
+
 		if (region == MemoryRegion::CARTRIDGE) {
-			cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+			if constexpr (type == NODELAY) {
+				cpu_cycles += 1;
+			} else {
+				cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+			}
 		} else {
 			cpu_cycles += waitstate_cycles[region][width_index];
 		}
@@ -395,7 +404,9 @@ template<typename T, int whence, int type> void write(addr_t addr, T data)
 
 	writearr<T>(arr, offset, data);
 write_end:
-	if constexpr (type != NODELAY) {
+	if constexpr (type == NOCYCLES) {
+		;
+	} else {
 		int width_index;
 		if constexpr (sizeof(T) == sizeof(u8)) {
 			width_index = 0;
@@ -404,8 +415,13 @@ write_end:
 		} else {
 			width_index = 2;
 		}
+
 		if (region == MemoryRegion::CARTRIDGE) {
-			cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+			if constexpr (type == NODELAY) {
+				cpu_cycles += 1;
+			} else {
+				cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+			}
 		} else {
 			cpu_cycles += waitstate_cycles[region][width_index];
 		}

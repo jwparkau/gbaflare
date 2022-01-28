@@ -53,25 +53,38 @@ AND_STYLE;\
 CV_FLAGS_ADD;
 
 #define __WRITE_MULTIPLE(x, target) \
+bool first = true;\
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		cpu.swrite32_noalign(address+rem, (target));\
+		if (first) {\
+			cpu.nwrite32_noalign(address+rem, (target));\
+			first = false;\
+		} else {\
+			cpu.swrite32_noalign(address+rem, (target));\
+		}\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	cpu.swrite32_noalign(address+rem, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
+	cpu.nwrite32_noalign(address+rem, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
 }
 
 #define __READ_MULTIPLE(x, target) \
+bool first = true;\
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		(target) = cpu.sread32_noalign(address+rem);\
+		if (first) {\
+			(target) = cpu.nread32_noalign(address+rem);\
+			first = false;\
+		} else {\
+			(target) = cpu.sread32_noalign(address+rem);\
+		}\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	WRITE_PC(cpu.sread32_noalign(address+rem) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
+	pc_written = true;\
+	WRITE_PC(cpu.nread32_noalign(address+rem) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
 }
 
 #define READ_MULTIPLE(x) \
@@ -99,6 +112,33 @@ if constexpr (shift_type == 0) {\
 	} else {\
 		(x) = ror(rm, imm, k);\
 	}\
+}
+
+#define MUL_ONES_ZEROS \
+int m;\
+int ones = std::countl_one(rs);\
+int zeros = std::countl_zero(rs);\
+if (ones >= 24 || zeros >= 24) {\
+	m = 1;\
+} else if (ones >= 16 || zeros >= 16) {\
+	m = 2;\
+} else if (ones >= 8 || zeros >= 8) {\
+	m = 3;\
+} else {\
+	m = 4;\
+}
+
+#define MUL_ZEROS \
+int m;\
+int zeros = std::countl_zero(rs);\
+if (zeros >= 24) {\
+	m = 1;\
+} else if (zeros >= 16) {\
+	m = 2;\
+} else if (zeros >= 8) {\
+	m = 3;\
+} else {\
+	m = 4;\
 }
 
 #endif

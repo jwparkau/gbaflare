@@ -71,6 +71,8 @@ struct DMA {
 	u32 load_cnt_l(int ch);
 	u32 load_dad(int ch);
 
+	void icycle();
+
 	DECLARE_READ_WRITE;
 };
 

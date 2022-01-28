@@ -36,7 +36,7 @@ void main_loop(char **argv)
 
 	//cpu.fakeboot();
 	cpu.flush_pipeline();
-	cpu.fetch();
+	cpu.sfetch();
 
 	next_event = 960;
 

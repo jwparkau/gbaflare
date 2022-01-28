@@ -63,12 +63,17 @@ struct CPU {
 
 	void step();
 
-	void fetch();
-	void arm_fetch();
-	void thumb_fetch();
+	void nfetch();
+	void sfetch();
+	void arm_nfetch();
+	void arm_sfetch();
+	void thumb_nfetch();
+	void thumb_sfetch();
 	void execute();
 	void arm_execute();
 	void thumb_execute();
+	void icycle();
+	void icycle(int n);
 
 	DECLARE_READ_WRITE;
 
@@ -80,6 +85,7 @@ struct CPU {
 	u16 sread16_noalign(addr_t addr);
 	void swrite32_noalign(addr_t addr, u32 data);
 	void swrite16_noalign(addr_t addr, u16 data);
+	void nocycle_write32_noalign(addr_t addr, u32 data);
 
 	u32 *get_reg(int i);
 	u32 *get_spsr();

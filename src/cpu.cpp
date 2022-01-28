@@ -51,8 +51,8 @@ void CPU::flush_pipeline()
 	} else {
 		pc -= 4;
 	}
-	fetch();
-	fetch();
+	nfetch();
+	sfetch();
 }
 
 void CPU::step()
@@ -80,37 +80,61 @@ void CPU::step()
 			set_flag(IRQ_DISABLE, 1);
 			pc = VECTOR_IRQ;
 			flush_pipeline();
-			fetch();
+			sfetch();
 		}
 	}
 
 	execute();
-	fetch();
 }
 
-void CPU::fetch()
-{
-	if (in_thumb_state()) {
-		thumb_fetch();
-	} else {
-		arm_fetch();
-	}
-}
-
-void CPU::arm_fetch()
+void CPU::arm_nfetch()
 {
 	pc += 4;
 	pipeline[0] = pipeline[1];
 	pipeline[1] = pipeline[2];
-	pipeline[2] = sread32(pc);
+	pipeline[2] = read<u32, FROM_FETCH, NSEQ>(pc);
 }
 
-void CPU::thumb_fetch()
+void CPU::arm_sfetch()
+{
+	pc += 4;
+	pipeline[0] = pipeline[1];
+	pipeline[1] = pipeline[2];
+	pipeline[2] = read<u32, FROM_FETCH, SEQ>(pc);
+}
+
+void CPU::thumb_nfetch()
 {
 	pc += 2;
 	pipeline[0] = pipeline[1];
 	pipeline[1] = pipeline[2];
-	pipeline[2] = sread16(pc);
+	pipeline[2] = read<u16, FROM_FETCH, NSEQ>(pc);
+}
+
+void CPU::thumb_sfetch()
+{
+	pc += 2;
+	pipeline[0] = pipeline[1];
+	pipeline[1] = pipeline[2];
+	pipeline[2] = read<u16, FROM_FETCH, SEQ>(pc);
+}
+
+void CPU::nfetch()
+{
+	if (in_thumb_state()) {
+		thumb_nfetch();
+	} else {
+		arm_nfetch();
+	}
+}
+
+void CPU::sfetch()
+{
+	if (in_thumb_state()) {
+		thumb_sfetch();
+	} else {
+		arm_sfetch();
+	}
 }
 
 void CPU::execute()
@@ -185,6 +209,8 @@ void CPU::arm_execute()
 #else
 		fp(op);
 #endif
+	} else {
+		sfetch();
 	}
 }
 
@@ -407,6 +433,28 @@ void CPU::swrite16_noalign(addr_t addr, u16 data)
 	} else {
 		swrite16(align(addr, 2), data);
 	}
+}
+
+void CPU::nocycle_write32_noalign(addr_t addr, u32 data)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		bool c;
+		int rem = addr % 4;
+		data = ror(data, rem * 8, c);
+		write<u8, FROM_CPU, NOCYCLES>(addr, data);
+	} else {
+		write<u32, FROM_CPU, NOCYCLES>(align(addr, 4), data);
+	}
+}
+
+void CPU::icycle()
+{
+	cpu_cycles += 1;
+}
+
+void CPU::icycle(int n)
+{
+	cpu_cycles += n;
 }
 
 DEFINE_READ_WRITE(CPU)

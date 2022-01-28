@@ -26,11 +26,20 @@ void DMA::step_channel(int ch)
 	u32 x;
 	int width = GET_FLAG(t.cnt_h, DMA_TRANSFER32) ? 4 : 2;
 
+	bool first = t.count == 0;
+	if (first) {
+		cpu_cycles += 2;
+	}
+
 	if (width == 4) {
 		if (t.sad < 0x0200'0000) {
 			swrite32(t.dad, last_value[ch]);
 		} else {
-			x = sread32(t.sad);
+			if (first) {
+				x = nread32(t.sad);
+			} else {
+				x = sread32(t.sad);
+			}
 			swrite32(t.dad, x);
 			last_value[ch] = x;
 		}
@@ -38,7 +47,11 @@ void DMA::step_channel(int ch)
 		if (t.sad < 0x0200'0000) {
 			swrite16(t.dad, last_value[ch]);
 		} else {
-			x = sread16(t.sad);
+			if (first) {
+				x = nread16(t.sad);
+			} else {
+				x = sread16(t.sad);
+			}
 			swrite16(t.dad, x);
 			last_value[ch] = x * 0x10001;
 		}

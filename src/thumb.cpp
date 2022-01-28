@@ -1,6 +1,7 @@
 #include "thumb.h"
 #include "cpu.h"
 #include "ops.h"
+#include "memory.h"
 
 #include <bit>
 #include <iostream>
@@ -139,6 +140,7 @@ void thumb_branch_cond(u16 op)
 	if (cpu.cond_triggered(cond)) {
 		WRITE_PC(cpu.pc + (s32)imm * 2);
 	}
+	cpu.sfetch();
 }
 
 template <u32 h>
@@ -158,6 +160,7 @@ void thumb_branch(u16 op)
 		WRITE_PC(*lr + imm * 2);
 		*lr = (old_pc - 2) | 1;
 	}
+	cpu.sfetch();
 }
 
 void thumb_bx(u16 op)
@@ -165,6 +168,7 @@ void thumb_bx(u16 op)
 	u32 rm = *cpu.get_reg(op >> 3 & BITMASK(4));
 
 	BRANCH_X_RM;
+	cpu.sfetch();
 }
 
 template <u32 shift_type>
@@ -181,6 +185,7 @@ void thumb_shift_reg(u16 op)
 	u32 r = *rd;
 	NZ_FLAGS_RD;
 	WRITE_CPU_FLAGS;
+	cpu.sfetch();
 }
 
 template <u32 aluop>
@@ -212,6 +217,7 @@ void thumb_addsub(u16 op)
 	NZ_FLAGS_RD;
 
 	WRITE_CPU_FLAGS;
+	cpu.sfetch();
 }
 
 template <u32 aluop>
@@ -242,6 +248,7 @@ void thumb_addsubcmpmov(u16 op)
 	NZ_FLAGS_RD;
 
 	WRITE_CPU_FLAGS;
+	cpu.sfetch();
 }
 
 template <u32 aluop>
@@ -253,6 +260,7 @@ void thumb_alu(u16 op)
 	u32 operand = *cpu.get_reg(op >> 3 & BITMASK(3));
 
 	u32 rn = *rd;
+	u32 rs = rn;
 	u32 r;
 
 	if constexpr (aluop == 0) {
@@ -293,6 +301,8 @@ void thumb_alu(u16 op)
 		r = *rd = rn | operand;
 	} else if constexpr (aluop == 0xD) {
 		r = *rd = rn * operand;
+		MUL_ONES_ZEROS;
+		cpu.icycle(m);
 	} else if constexpr (aluop == 0xE) {
 		r = *rd = rn & (~operand);
 	} else if constexpr (aluop == 0xF) {
@@ -302,6 +312,17 @@ void thumb_alu(u16 op)
 	NZ_FLAGS_RD;
 
 	WRITE_CPU_FLAGS;
+
+	if constexpr (aluop == 2 || aluop == 3 || aluop == 4 || aluop == 7) {
+		cpu.icycle();
+		if (!prefetch_enabled) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.sfetch();
+	}
 }
 
 template <u32 aluop>
@@ -342,6 +363,7 @@ void thumb_special_data(u16 op)
 		*rd = align(*rd, 2);
 		cpu.flush_pipeline();
 	}
+	cpu.sfetch();
 }
 
 void thumb_load_pool(u16 op)
@@ -349,7 +371,13 @@ void thumb_load_pool(u16 op)
 	u32 *rd = cpu.get_reg(op >> 8 & BITMASK(3));
 	u32 nn = op & BITMASK(8);
 
-	*rd = cpu.sread32_noalign(cpu.pc + nn * 4);
+	*rd = cpu.nread32_noalign(cpu.pc + nn * 4);
+	cpu.icycle();
+	if (!prefetch_enabled) {
+		cpu.nfetch();
+	} else {
+		cpu.sfetch();
+	}
 }
 
 template <u32 code>
@@ -362,33 +390,44 @@ void thumb_loadstore_reg(u16 op)
 	u32 address = rn + rm;
 
 	if constexpr (code == 0) {
-		cpu.swrite32_noalign(address, *rd);
+		cpu.nwrite32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
-		cpu.swrite16_noalign(address, *rd & BITMASK(16));
+		cpu.nwrite16_noalign(address, *rd & BITMASK(16));
 	} else if constexpr (code == 2) {
-		cpu.swrite8(address, *rd & BITMASK(8));
+		cpu.nwrite8(address, *rd & BITMASK(8));
 	} else if constexpr (code == 3) {
-		*rd = (s8)cpu.sread8(address);
+		*rd = (s8)cpu.nread8(address);
 	} else if constexpr (code == 4) {
 		bool c;
 		int rem = address % 4;
-		*rd = ror(cpu.sread32_noalign(address), rem * 8, c);
+		*rd = ror(cpu.nread32_noalign(address), rem * 8, c);
 	} else if constexpr (code == 5) {
 		bool c;
 		int rem = address % 2;
-		*rd = ror(cpu.sread16_noalign(address), rem * 8, c);
+		*rd = ror(cpu.nread16_noalign(address), rem * 8, c);
 	} else if constexpr (code == 6) {
-		*rd = cpu.sread8(address);
+		*rd = cpu.nread8(address);
 	} else if constexpr (code == 7) {
 		u32 rem;
 
 		rem = address & BITMASK(1);
 
 		if (rem) {
-			*rd = (s8)cpu.sread8(address);
+			*rd = (s8)cpu.nread8(address);
 		} else {
-			*rd = (s16)cpu.sread16_noalign(address);
+			*rd = (s16)cpu.nread16_noalign(address);
 		}
+	}
+
+	if constexpr (code >= 3) {
+		cpu.icycle();
+		if (!prefetch_enabled) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
 	}
 }
 
@@ -401,18 +440,29 @@ void thumb_loadstore_imm(u16 op)
 
 	if constexpr (code == 0) {
 		u32 address = rn + imm * 4;
-		cpu.swrite32_noalign(address, *rd);
+		cpu.nwrite32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
 		u32 address = rn + imm * 4;
 		bool c;
 		int rem = address % 4;
-		*rd = ror(cpu.sread32_noalign(address), rem * 8, c);
+		*rd = ror(cpu.nread32_noalign(address), rem * 8, c);
 	} else if constexpr (code == 2) {
 		u32 address = rn + imm;
-		cpu.swrite8(address, *rd & BITMASK(8));
+		cpu.nwrite8(address, *rd & BITMASK(8));
 	} else if constexpr (code == 3) {
 		u32 address = rn + imm;
-		*rd = cpu.sread8(address);
+		*rd = cpu.nread8(address);
+	}
+
+	if constexpr (code % 2 == 1) {
+		cpu.icycle();
+		if (!prefetch_enabled) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
 	}
 }
 
@@ -426,11 +476,22 @@ void thumb_loadstore_half(u16 op)
 	u32 address = rn + imm * 2;
 
 	if constexpr (code == 0) {
-		cpu.swrite16_noalign(address, *rd & BITMASK(16));
+		cpu.nwrite16_noalign(address, *rd & BITMASK(16));
 	} else if constexpr (code == 1) {
 		bool c;
 		int rem = address % 2;
-		*rd = ror(cpu.sread16_noalign(address), rem * 8, c);
+		*rd = ror(cpu.nread16_noalign(address), rem * 8, c);
+	}
+
+	if constexpr (code % 2 == 1) {
+		cpu.icycle();
+		if (!prefetch_enabled) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
 	}
 }
 
@@ -444,11 +505,22 @@ void thumb_loadstore_sp(u16 op)
 	u32 address = sp + imm * 4;
 
 	if constexpr (code == 0) {
-		cpu.swrite32_noalign(address, *rd);
+		cpu.nwrite32_noalign(address, *rd);
 	} else if constexpr (code == 1) {
 		bool c;
 		int rem = address % 4;
-		*rd = ror(cpu.sread32_noalign(address), rem * 8, c);
+		*rd = ror(cpu.nread32_noalign(address), rem * 8, c);
+	}
+
+	if constexpr (code % 2 == 1) {
+		cpu.icycle();
+		if (!prefetch_enabled) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
 	}
 }
 
@@ -463,6 +535,8 @@ void thumb_addpcsp(u16 op)
 	} else if constexpr (code == 1) {
 		*rd = *cpu.get_sp() + (imm << 2);
 	}
+
+	cpu.sfetch();
 }
 
 template <u32 code>
@@ -476,6 +550,8 @@ void thumb_sp_add(u16 op)
 	} else if constexpr (code == 1) {
 		*sp = *sp - (imm << 2);
 	}
+
+	cpu.sfetch();
 }
 
 template <u32 code, u32 pclr>
@@ -486,6 +562,8 @@ void thumb_pushpop(u16 op)
 
 	u32 k = 4 * (std::popcount(register_list) + pclr);
 
+	bool pc_written = false;
+
 	if constexpr (code == 0) {
 		int rem = (*sp - k) % 4;
 		u32 address = align(*sp - k, 4);
@@ -493,7 +571,11 @@ void thumb_pushpop(u16 op)
 		WRITE_MULTIPLE(7);
 
 		if constexpr (pclr) {
-			cpu.swrite32_noalign(address+rem, *cpu.get_lr());
+			if (first) {
+				cpu.nwrite32_noalign(address+rem, *cpu.get_lr());
+			} else {
+				cpu.swrite32_noalign(address+rem, *cpu.get_lr());
+			}
 		}
 
 		*sp = *sp - k;
@@ -505,10 +587,26 @@ void thumb_pushpop(u16 op)
 		READ_MULTIPLE(7);
 
 		if constexpr (pclr) {
-			WRITE_PC(align(cpu.sread32_noalign(address+rem), 2));
+			pc_written = true;
+			if (first) {
+				WRITE_PC(align(cpu.nread32_noalign(address+rem), 2));
+			} else {
+				WRITE_PC(align(cpu.sread32_noalign(address+rem), 2));
+			}
 		}
 
 		*sp = end_address;
+	}
+
+	if constexpr (code == 1) {
+		cpu.icycle();
+		if (!prefetch_enabled && !pc_written) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
 	}
 }
 
@@ -531,6 +629,8 @@ void thumb_multiple(u16 op)
 
 	*rn = *rn + k;
 
+	bool pc_written = false;
+
 	if constexpr (code == 0) {
 		WRITE_MULTIPLE(7);
 	} else if constexpr (code == 1) {
@@ -539,7 +639,7 @@ void thumb_multiple(u16 op)
 
 	if constexpr (code == 0) {
 		if ((register_list & BITMASK(rni + 1)) == BIT(rni)) {
-			cpu.swrite32_noalign(start_address, old_rn);
+			cpu.nocycle_write32_noalign(start_address, old_rn);
 		}
 	} else {
 		if (register_list & BIT(rni)) {
@@ -547,6 +647,16 @@ void thumb_multiple(u16 op)
 		}
 	}
 
+	if constexpr (code == 1) {
+		cpu.icycle();
+		if (!prefetch_enabled && !pc_written) {
+			cpu.nfetch();
+		} else {
+			cpu.sfetch();
+		}
+	} else {
+		cpu.nfetch();
+	}
 }
 
 void thumb_swi(u16 op)
@@ -555,4 +665,5 @@ void thumb_swi(u16 op)
 
 	cpu.exception_prologue(SUPERVISOR, 0x13);
 	WRITE_PC(VECTOR_SWI);
+	cpu.sfetch();
 }

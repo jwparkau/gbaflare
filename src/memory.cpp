@@ -113,7 +113,7 @@ void set_initial_memory_state()
 
 	io_write<u16>(IO_KEYINPUT, 0xFFFF);
 
-	write<u16, ALLOW_ALL, NODELAY>(IO_WAITCNT, 0);
+	write<u16, ALLOW_ALL, NOCYCLES>(IO_WAITCNT, 0);
 }
 
 
