@@ -15,7 +15,7 @@ static const int timer_freq[] = {
 
 void Timer::step()
 {
-	simulate_elapsed(elapsed);
+	simulate_elapsed(elapsed - last_timer_update);
 
 	last_timer_update = 0;
 }
@@ -77,6 +77,8 @@ void Timer::on_timer_overflow(int i)
 			do_timer_increment(i+1);
 		}
 	}
+
+	values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
 }
 
 u8 Timer::on_read(addr_t addr)
@@ -98,10 +100,10 @@ void Timer::on_write(addr_t addr, u8 old_value, u8 new_value)
 
 	if (!(old_value & TIMER_ENABLED) && (new_value & TIMER_ENABLED)) {
 		values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
-	}
 
-	if ((new_value & TIMER_ENABLED) && !(new_value & TIMER_COUNTUP)) {
-		u32 freq = timer_freq[new_value & TIMER_PRESCALE];
-		schedule_after((0x10000 - values[i]) * freq);
+		if (!(new_value & TIMER_COUNTUP)) {
+			u32 freq = timer_freq[new_value & TIMER_PRESCALE];
+			schedule_after((0x10000 - values[i]) * freq);
+		}
 	}
 }
