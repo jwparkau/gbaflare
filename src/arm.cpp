@@ -477,7 +477,7 @@ if constexpr (prepost == 1) {\
 		u32 rem;
 
 		rem = address & BITMASK(2);
-		value = ror(cpu.read32_noalign(address), rem * 8, carry);
+		value = ror(cpu.sread32_noalign(address), rem * 8, carry);
 
 		if (rdi == 15) {
 			WRITE_PC(align(value, 4));
@@ -485,12 +485,12 @@ if constexpr (prepost == 1) {\
 			*rd = value;
 		}
 	} else if constexpr (load == 1 && byteword == 1) {
-		*rd = cpu.read8(address);
+		*rd = cpu.sread8(address);
 	} else if constexpr (load == 0 && byteword == 0) {
 		u32 value = (rdi == rni) ? old_rn : *rd;
-		cpu.write32_noalign(address, value + (rdi == 15 ? 4 : 0));
+		cpu.swrite32_noalign(address, value + (rdi == 15 ? 4 : 0));
 	} else if constexpr (load == 0 && byteword == 1) {
-		cpu.write8(address, (*rd + (rdi == 15 ? 4 : 0)) & BITMASK(8));
+		cpu.swrite8(address, (*rd + (rdi == 15 ? 4 : 0)) & BITMASK(8));
 	}
 }
 
@@ -507,13 +507,13 @@ void arm_swp(u32 op)
 
 	if constexpr (byteword == 0) {
 		u32 rem = address & BITMASK(2);
-		u32 temp = ror(cpu.read32_noalign(address), rem * 8, carry);
+		u32 temp = ror(cpu.sread32_noalign(address), rem * 8, carry);
 
-		cpu.write32_noalign(address, rm);
+		cpu.swrite32_noalign(address, rm);
 		*rd = temp;
 	} else {
-		u32 temp = cpu.read8(rn);
-		cpu.write8(rn, rm & BITMASK(8));
+		u32 temp = cpu.sread8(rn);
+		cpu.swrite8(rn, rm & BITMASK(8));
 		*rd = temp;
 	}
 
@@ -541,22 +541,22 @@ void arm_misc_dt(u32 op)
 	ADDRESS_WRITE;
 
 	if constexpr (load == 1 && half == 0) {
-		*rd = (s8)cpu.read8(address);
+		*rd = (s8)cpu.sread8(address);
 	} else if constexpr (load == 1 && half == 1) {
 		int rem = address % 2;
 		if constexpr (sign == 1) {
 			if (rem) {
-				*rd = (s8)cpu.read8(address);
+				*rd = (s8)cpu.sread8(address);
 			} else {
-				*rd = (s16)cpu.read16_noalign(address);
+				*rd = (s16)cpu.sread16_noalign(address);
 			}
 		} else {
 			bool c;
-			*rd = ror(cpu.read16_noalign(address), rem * 8, c);
+			*rd = ror(cpu.sread16_noalign(address), rem * 8, c);
 		}
 	} else if (load == 0 && half == 1) {
 		u16 value = (rni == rdi) ? old_rn : *rd;
-		cpu.write16_noalign(address, value & BITMASK(16));
+		cpu.swrite16_noalign(address, value & BITMASK(16));
 	}
 }
 
@@ -604,7 +604,7 @@ void arm_block_dt(u32 op)
 		READ_MULTIPLE(14);
 
 		if (register_list & BIT(15)) {
-			WRITE_PC(cpu.read32_noalign(address) & 0xFFFF'FFFC);
+			WRITE_PC(cpu.sread32_noalign(address) & 0xFFFF'FFFC);
 		}
 
 	} else if (load == 1 && writeback == 0 && psr == 1 && !(op & BIT(15))) {
@@ -617,26 +617,26 @@ void arm_block_dt(u32 op)
 		cpu.update_mode();
 
 		u32 mask = cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC;
-		WRITE_PC(cpu.read32_noalign(address+rem) & mask);
+		WRITE_PC(cpu.sread32_noalign(address+rem) & mask);
 
 	} else if constexpr (load == 0 && psr == 0) {
 		WRITE_MULTIPLE(14);
 
 		if (register_list & BIT(15)) {
-			cpu.write32_noalign(address+rem, cpu.pc + 4);
+			cpu.swrite32_noalign(address+rem, cpu.pc + 4);
 		}
 
 	} else if constexpr (load == 0 && writeback == 0 && psr == 1) {
 		WRITE_MULTIPLE_FORCE_USER(14);
 
 		if (register_list & BIT(15)) {
-			cpu.write32_noalign(address+rem, cpu.pc);
+			cpu.swrite32_noalign(address+rem, cpu.pc);
 		}
 	}
 
 	if constexpr (load == 0 && writeback == 1) {
 		if ((register_list & BITMASK(rni + 1)) == BIT(rni)) {
-			cpu.write32_noalign(start_address, old_rn);
+			cpu.swrite32_noalign(start_address, old_rn);
 		}
 	}
 

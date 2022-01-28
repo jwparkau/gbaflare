@@ -80,8 +80,6 @@ void CPU::step()
 
 	execute();
 	fetch();
-
-	cpu_cycles += 1;
 }
 
 void CPU::fetch()
@@ -114,7 +112,7 @@ void CPU::execute()
 
 void CPU::thumb_execute()
 {
-	u16 op = read16(pc - 4);
+	u16 op = sread16(pc - 4);
 
 #ifdef DEBUG
 	if (debug) {
@@ -145,7 +143,7 @@ bool CPU::cond_triggered(u32 cond)
 
 void CPU::arm_execute()
 {
-	u32 op = read32(pc - 8);
+	u32 op = sread32(pc - 8);
 	if (pc < BIOS_END) {
 		last_bios_opcode = readarr<u32>(bios_data, pc);
 	}
@@ -317,45 +315,87 @@ void CPU::dump_registers()
 	fprintf(stderr, "cpsr: %08X |", CPSR);
 }
 
-u32 CPU::read32_noalign(addr_t addr)
+u32 CPU::nread32_noalign(addr_t addr)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
-		return sram_area_read<u32, FROM_CPU>(addr);
+		return nread32(addr);
 	}
 
-	return read32(align(addr, 4));
+	return nread32(align(addr, 4));
 }
 
-u16 CPU::read16_noalign(addr_t addr)
+u16 CPU::nread16_noalign(addr_t addr)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
-		return sram_area_read<u16, FROM_CPU>(addr);
+		return nread16(addr);
 	}
 
-	return read16(align(addr, 2));
+	return nread16(align(addr, 2));
 }
 
-void CPU::write32_noalign(addr_t addr, u32 data)
+void CPU::nwrite32_noalign(addr_t addr, u32 data)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
 		int rem = addr % 4;
 		data = ror(data, rem * 8, c);
-		sram_area_write<u8, FROM_CPU>(addr, data);
+		nwrite8(addr, data);
 	} else {
-		write32(align(addr, 4), data);
+		nwrite32(align(addr, 4), data);
 	}
 }
 
-void CPU::write16_noalign(addr_t addr, u16 data)
+void CPU::nwrite16_noalign(addr_t addr, u16 data)
 {
 	if (SRAM_START <= addr && addr < 0x1000'0000) {
 		bool c;
 		int rem = addr % 2;
 		data = ror(data, rem * 8, c);
-		sram_area_write<u8, FROM_CPU>(addr, data);
+		nwrite8(addr, data);
 	} else {
-		write16(align(addr, 2), data);
+		nwrite16(align(addr, 2), data);
+	}
+}
+
+u32 CPU::sread32_noalign(addr_t addr)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		return sread32(addr);
+	}
+
+	return sread32(align(addr, 4));
+}
+
+u16 CPU::sread16_noalign(addr_t addr)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		return sread16(addr);
+	}
+
+	return sread16(align(addr, 2));
+}
+
+void CPU::swrite32_noalign(addr_t addr, u32 data)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		bool c;
+		int rem = addr % 4;
+		data = ror(data, rem * 8, c);
+		swrite8(addr, data);
+	} else {
+		swrite32(align(addr, 4), data);
+	}
+}
+
+void CPU::swrite16_noalign(addr_t addr, u16 data)
+{
+	if (SRAM_START <= addr && addr < 0x1000'0000) {
+		bool c;
+		int rem = addr % 2;
+		data = ror(data, rem * 8, c);
+		swrite8(addr, data);
+	} else {
+		swrite16(align(addr, 2), data);
 	}
 }
 

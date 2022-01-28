@@ -55,23 +55,23 @@ CV_FLAGS_ADD;
 #define __WRITE_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		cpu.write32_noalign(address+rem, (target));\
+		cpu.swrite32_noalign(address+rem, (target));\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	cpu.write32_noalign(address+rem, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
+	cpu.swrite32_noalign(address+rem, cpu.pc + (cpu.in_thumb_state() ? 2 : 4));\
 }
 
 #define __READ_MULTIPLE(x, target) \
 for (int i = 0; i <= (x); i++) {\
 	if (register_list & BIT(i)) {\
-		(target) = cpu.read32_noalign(address+rem);\
+		(target) = cpu.sread32_noalign(address+rem);\
 		address += 4;\
 	}\
 }\
 if (register_list == 0) {\
-	WRITE_PC(cpu.read32_noalign(address+rem) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
+	WRITE_PC(cpu.sread32_noalign(address+rem) & (cpu.in_thumb_state() ? 0xFFFF'FFFE : 0xFFFF'FFFC));\
 }
 
 #define READ_MULTIPLE(x) \

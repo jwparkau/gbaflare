@@ -28,18 +28,18 @@ void DMA::step_channel(int ch)
 
 	if (width == 4) {
 		if (t.sad < 0x0200'0000) {
-			write32(t.dad, last_value[ch]);
+			swrite32(t.dad, last_value[ch]);
 		} else {
-			x = read32(t.sad);
-			write32(t.dad, x);
+			x = sread32(t.sad);
+			swrite32(t.dad, x);
 			last_value[ch] = x;
 		}
 	} else {
 		if (t.sad < 0x0200'0000) {
-			write16(t.dad, last_value[ch]);
+			swrite16(t.dad, last_value[ch]);
 		} else {
-			x = read16(t.sad);
-			write16(t.dad, x);
+			x = sread16(t.sad);
+			swrite16(t.dad, x);
 			last_value[ch] = x * 0x10001;
 		}
 	}
@@ -72,8 +72,6 @@ void DMA::step_channel(int ch)
 
 		dma_active &= ~BIT(ch);
 	}
-
-	cpu_cycles += 1;
 }
 
 u32 DMA::load_cnt_l(int ch)

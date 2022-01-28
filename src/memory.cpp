@@ -20,6 +20,8 @@ u8 sram_data[SRAM_SIZE];
 
 u32 last_bios_opcode;
 
+bool prefetch_enabled;
+
 u8 *const region_to_data[NUM_REGIONS] = {
 	nullptr,
 	bios_data,
@@ -78,6 +80,20 @@ const u32 region_to_offset_mask[NUM_REGIONS] = {
 	0xFFFF
 };
 
+u8 waitstate_cycles[NUM_REGIONS][3] = {
+	{1, 1, 1},
+	{1, 1, 1},
+	{3, 3, 6},
+	{1, 1, 1},
+	{1, 1, 1},
+	{1, 1, 2},
+	{1, 1, 2},
+	{1, 1, 1},
+	{5, 5, 8},
+	{5, 5, 5}
+};
+u8 cartridge_cycles[3][2][3];
+
 void request_interrupt(u16 flag)
 {
 	u16 inter_flag = io_read<u16>(IO_IF);
@@ -96,6 +112,8 @@ void set_initial_memory_state()
 	}
 
 	io_write<u16>(IO_KEYINPUT, 0xFFFF);
+
+	write<u16, ALLOW_ALL, NODELAY>(IO_WAITCNT, 0);
 }
 
 
@@ -174,4 +192,51 @@ bool in_vram_bg(u32 offset) {
 	} else {
 		return offset < 0x10000;
 	}
+}
+
+const u8 cycles1[4] = {4, 3, 2, 8};
+const u8 cycles2[2] = {2, 1};
+const u8 cycles3[2] = {4, 1};
+const u8 cycles4[2] = {8, 1};
+
+void on_waitcntl_write(u8 value)
+{
+	int sram_wait = cycles1[value & BITMASK(2)];
+	for (int i = 0; i < 3; i++) {
+		waitstate_cycles[MemoryRegion::SRAM][i] = 1 + sram_wait;
+	}
+
+	int wait0_nseq = cycles1[value >> 2 & BITMASK(2)];
+	int wait0_seq = cycles2[value >> 4 & BITMASK(1)];
+	int wait1_nseq = cycles1[value >> 5 & BITMASK(2)];
+	int wait1_seq = cycles3[value >> 7 & BITMASK(1)];
+
+	cartridge_cycles[0][NSEQ][0] = 1 + wait0_nseq;
+	cartridge_cycles[0][NSEQ][1] = 1 + wait0_nseq;
+	cartridge_cycles[0][NSEQ][2] = 1 + wait0_nseq + 1 + wait0_seq;
+	cartridge_cycles[0][SEQ][0] = 1 + wait0_seq;
+	cartridge_cycles[0][SEQ][1] = 1 + wait0_seq;
+	cartridge_cycles[0][SEQ][2] = 2 * (1 + wait0_seq);
+
+	cartridge_cycles[1][NSEQ][0] = 1 + wait1_nseq;
+	cartridge_cycles[1][NSEQ][1] = 1 + wait1_nseq;
+	cartridge_cycles[1][NSEQ][2] = 1 + wait1_nseq + 1 + wait1_seq;
+	cartridge_cycles[1][SEQ][0] = 1 + wait1_seq;
+	cartridge_cycles[1][SEQ][1] = 1 + wait1_seq;
+	cartridge_cycles[1][SEQ][2] = 2 * (1 + wait1_seq);
+}
+
+void on_waitcnth_write(u8 value)
+{
+	int wait2_nseq = cycles1[value & BITMASK(2)];
+	int wait2_seq = cycles4[value >> 2 & BITMASK(1)];
+
+	cartridge_cycles[2][NSEQ][0] = 1 + wait2_nseq;
+	cartridge_cycles[2][NSEQ][1] = 1 + wait2_nseq;
+	cartridge_cycles[2][NSEQ][2] = 1 + wait2_nseq + 1 + wait2_seq;
+	cartridge_cycles[2][SEQ][0] = 1 + wait2_seq;
+	cartridge_cycles[2][SEQ][1] = 1 + wait2_seq;
+	cartridge_cycles[2][SEQ][2] = 2 * (1 + wait2_seq);
+
+	prefetch_enabled = value & BIT(6);
 }

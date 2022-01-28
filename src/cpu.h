@@ -71,10 +71,14 @@ struct CPU {
 
 	DECLARE_READ_WRITE;
 
-	u32 read32_noalign(addr_t addr);
-	u16 read16_noalign(addr_t addr);
-	void write32_noalign(addr_t addr, u32 data);
-	void write16_noalign(addr_t addr, u16 data);
+	u32 nread32_noalign(addr_t addr);
+	u16 nread16_noalign(addr_t addr);
+	void nwrite32_noalign(addr_t addr, u32 data);
+	void nwrite16_noalign(addr_t addr, u16 data);
+	u32 sread32_noalign(addr_t addr);
+	u16 sread16_noalign(addr_t addr);
+	void swrite32_noalign(addr_t addr, u32 data);
+	void swrite16_noalign(addr_t addr, u16 data);
 
 	u32 *get_reg(int i);
 	u32 *get_spsr();

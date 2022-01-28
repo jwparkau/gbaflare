@@ -8,6 +8,7 @@
 #include "cpu.h"
 #include "flash.h"
 #include "platform.h"
+#include "scheduler.h"
 
 #include <string>
 
@@ -105,6 +106,7 @@ enum io_registers : u32 {
 	IO_KEYCNT	= 0x0400'0132,
 	IO_IE		= 0x0400'0200,
 	IO_IF		= 0x0400'0202,
+	IO_WAITCNT	= 0x0400'0204,
 	IO_IME		= 0x0400'0208,
 	IO_HALTCNT	= 0x0400'0301
 };
@@ -146,6 +148,12 @@ enum MemoryAccessFrom {
 	ALLOW_ALL
 };
 
+enum MemoryAccessType {
+	NSEQ,
+	SEQ,
+	NODELAY
+};
+
 enum SaveType {
 	SAVE_NONE,
 	SAVE_FLASH64,
@@ -177,7 +185,12 @@ extern u8 *const region_to_data[NUM_REGIONS];
 extern u8 *const region_to_data_write[NUM_REGIONS];
 extern const int addr_to_region[16];
 extern const u32 region_to_offset_mask[NUM_REGIONS];
+
+extern u8 waitstate_cycles[NUM_REGIONS][3];
+extern u8 cartridge_cycles[3][2][3];
 extern u32 last_bios_opcode;
+
+extern bool prefetch_enabled;
 
 void request_interrupt(u16 flag);
 void load_bios_rom(const char *filename);
@@ -187,6 +200,8 @@ void load_sram();
 void save_sram();
 void set_initial_memory_state();
 bool in_vram_bg(addr_t addr);
+void on_waitcntl_write(u8 value);
+void on_waitcnth_write(u8 value);
 
 template<typename T> T io_read(addr_t addr)
 {
@@ -244,7 +259,7 @@ template<typename T, int whence> void sram_area_write(addr_t addr, T data)
 	}
 }
 
-template<typename T, int whence> T read(addr_t addr)
+template<typename T, int whence, int type> T read(addr_t addr)
 {
 	T ret = BITMASK(sizeof(T) * 8);
 	int region;
@@ -256,24 +271,26 @@ template<typename T, int whence> T read(addr_t addr)
 			if (cpu.pc - 8 >= 0x4000) {
 				if constexpr (sizeof(T) == sizeof(u8)) {
 					ret = last_bios_opcode >> (addr % 4 * 8);
-					goto read_end;
 				} else {
 					ret = last_bios_opcode;
-					goto read_end;
 				}
+				region = MemoryRegion::BIOS;
+				goto read_end;
 			}
 		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
-			u32 op = read<u32, ALLOW_ALL>(cpu.pc);
+			u32 op = read<u32, ALLOW_ALL, NODELAY>(cpu.pc);
 			if constexpr (sizeof(T) == sizeof(u8)) {
 				ret = op >> (addr % 4 * 8);
 			} else {
 				ret = op;
 			}
+			region = MemoryRegion::UNUSED;
 			goto read_end;
 		}
 	}
 
 	if (addr >= 0x1000'0000) {
+		region = MemoryRegion::UNUSED;
 		goto read_end;
 	}
 
@@ -304,16 +321,33 @@ template<typename T, int whence> T read(addr_t addr)
 	ret = readarr<T>(arr, offset);
 
 read_end:
+	if constexpr (type != NODELAY) {
+		int width_index;
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			width_index = 0;
+		} else if constexpr (sizeof(T) == sizeof(u16)) {
+			width_index = 1;
+		} else {
+			width_index = 2;
+		}
+		if (region == MemoryRegion::CARTRIDGE) {
+			cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+		} else {
+			cpu_cycles += waitstate_cycles[region][width_index];
+		}
+	}
+
 	return ret;
 }
 
-template<typename T, int whence> void write(addr_t addr, T data)
+template<typename T, int whence, int type> void write(addr_t addr, T data)
 {
 	int region;
 	u8 *arr;
 	u32 offset;
 
 	if (addr >= 0x1000'0000) {
+		region = MemoryRegion::UNUSED;
 		goto write_end;
 	}
 
@@ -361,7 +395,21 @@ template<typename T, int whence> void write(addr_t addr, T data)
 
 	writearr<T>(arr, offset, data);
 write_end:
-	;
+	if constexpr (type != NODELAY) {
+		int width_index;
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			width_index = 0;
+		} else if constexpr (sizeof(T) == sizeof(u16)) {
+			width_index = 1;
+		} else {
+			width_index = 2;
+		}
+		if (region == MemoryRegion::CARTRIDGE) {
+			cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+		} else {
+			cpu_cycles += waitstate_cycles[region][width_index];
+		}
+	}
 }
 
 template<typename T, int whence> T mmio_read(addr_t addr)
@@ -449,6 +497,12 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 				if (new_value == 0) {
 					cpu.halted = true;
 				}
+				break;
+			case IO_WAITCNT:
+				on_waitcntl_write(new_value);
+				break;
+			case IO_WAITCNT + 1:
+				on_waitcnth_write(new_value);
 				break;
 		}
 

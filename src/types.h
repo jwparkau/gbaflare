@@ -73,20 +73,32 @@ u32 rrx(u32 x, bool &carry);
 #define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
 
 #define DECLARE_READ_WRITE \
-u32 read32(addr_t addr);\
-u16 read16(addr_t addr);\
-u8 read8(addr_t addr);\
-void write32(addr_t addr, u32 data);\
-void write16(addr_t addr, u16 data);\
-void write8(addr_t addr, u8 data)
+u32 nread32(addr_t addr);\
+u16 nread16(addr_t addr);\
+u8 nread8(addr_t addr);\
+void nwrite32(addr_t addr, u32 data);\
+void nwrite16(addr_t addr, u16 data);\
+void nwrite8(addr_t addr, u8 data);\
+u32 sread32(addr_t addr);\
+u16 sread16(addr_t addr);\
+u8 sread8(addr_t addr);\
+void swrite32(addr_t addr, u32 data);\
+void swrite16(addr_t addr, u16 data);\
+void swrite8(addr_t addr, u8 data)
 
 #define DEFINE_READ_WRITE(x) \
-u32 x::read32(addr_t addr) { return read<u32, FROM_##x>(addr); }\
-u16 x::read16(addr_t addr) { return read<u16, FROM_##x>(addr); }\
-u8 x::read8(addr_t addr) { return read<u8, FROM_##x>(addr); }\
-void x::write32(addr_t addr, u32 data) { write<u32, FROM_##x>(addr, data); }\
-void x::write16(addr_t addr, u16 data) { write<u16, FROM_##x>(addr, data); }\
-void x::write8(addr_t addr, u8 data) { write<u8, FROM_##x>(addr, data); }
+u32 x::nread32(addr_t addr) { return read<u32, FROM_##x, NSEQ>(addr); }\
+u16 x::nread16(addr_t addr) { return read<u16, FROM_##x, NSEQ>(addr); }\
+u8 x::nread8(addr_t addr) { return read<u8, FROM_##x, NSEQ>(addr); }\
+void x::nwrite32(addr_t addr, u32 data) { write<u32, FROM_##x, NSEQ>(addr, data); }\
+void x::nwrite16(addr_t addr, u16 data) { write<u16, FROM_##x, NSEQ>(addr, data); }\
+void x::nwrite8(addr_t addr, u8 data) { write<u8, FROM_##x, NSEQ>(addr, data); }\
+u32 x::sread32(addr_t addr) { return read<u32, FROM_##x, SEQ>(addr); }\
+u16 x::sread16(addr_t addr) { return read<u16, FROM_##x, SEQ>(addr); }\
+u8 x::sread8(addr_t addr) { return read<u8, FROM_##x, SEQ>(addr); }\
+void x::swrite32(addr_t addr, u32 data) { write<u32, FROM_##x, SEQ>(addr, data); }\
+void x::swrite16(addr_t addr, u16 data) { write<u16, FROM_##x, SEQ>(addr, data); }\
+void x::swrite8(addr_t addr, u8 data) { write<u8, FROM_##x, SEQ>(addr, data); }
 
 template<typename T> T readarr(u8 *arr, u32 offset)
 {
