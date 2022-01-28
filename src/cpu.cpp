@@ -46,6 +46,12 @@ void CPU::fakeboot()
 
 void CPU::flush_pipeline()
 {
+	if (in_thumb_state()) {
+		pc -= 2;
+	} else {
+		pc -= 4;
+	}
+	fetch();
 	fetch();
 }
 
@@ -73,7 +79,7 @@ void CPU::step()
 			set_flag(T_STATE, 0);
 			set_flag(IRQ_DISABLE, 1);
 			pc = VECTOR_IRQ;
-			fetch();
+			flush_pipeline();
 			fetch();
 		}
 	}
@@ -94,11 +100,17 @@ void CPU::fetch()
 void CPU::arm_fetch()
 {
 	pc += 4;
+	pipeline[0] = pipeline[1];
+	pipeline[1] = pipeline[2];
+	pipeline[2] = sread32(pc);
 }
 
 void CPU::thumb_fetch()
 {
 	pc += 2;
+	pipeline[0] = pipeline[1];
+	pipeline[1] = pipeline[2];
+	pipeline[2] = sread16(pc);
 }
 
 void CPU::execute()
@@ -112,7 +124,7 @@ void CPU::execute()
 
 void CPU::thumb_execute()
 {
-	u16 op = sread16(pc - 4);
+	u16 op = pipeline[0];
 
 #ifdef DEBUG
 	if (debug) {
@@ -143,9 +155,9 @@ bool CPU::cond_triggered(u32 cond)
 
 void CPU::arm_execute()
 {
-	u32 op = sread32(pc - 8);
+	u32 op = pipeline[0];
 	if (pc < BIOS_END) {
-		last_bios_opcode = readarr<u32>(bios_data, pc);
+		last_bios_opcode = pipeline[2];
 	}
 
 #ifdef DEBUG
@@ -154,8 +166,6 @@ void CPU::arm_execute()
 		fprintf(stderr, " %08X\n", op);
 	}
 #endif
-
-	//printf("%08X %08X\n", pc - 8, op);
 
 	u32 op1 = op >> 20 & BITMASK(8);
 	u32 op2 = op >> 4 & BITMASK(4);

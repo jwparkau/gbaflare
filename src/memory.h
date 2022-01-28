@@ -268,7 +268,7 @@ template<typename T, int whence, int type> T read(addr_t addr)
 
 	if constexpr (whence == FROM_CPU) {
 		if (addr < 0x4000) {
-			if (cpu.pc - 8 >= 0x4000) {
+			if (cpu.pc >= 0x4000) {
 				if constexpr (sizeof(T) == sizeof(u8)) {
 					ret = last_bios_opcode >> (addr % 4 * 8);
 				} else {
@@ -278,7 +278,7 @@ template<typename T, int whence, int type> T read(addr_t addr)
 				goto read_end;
 			}
 		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
-			u32 op = read<u32, ALLOW_ALL, NODELAY>(cpu.pc);
+			u32 op = cpu.pipeline[2];
 			if constexpr (sizeof(T) == sizeof(u8)) {
 				ret = op >> (addr % 4 * 8);
 			} else {

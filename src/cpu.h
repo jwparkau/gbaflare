@@ -47,6 +47,7 @@ struct CPU {
 	u32 CPSR{};
 	u32 SPSR[NUM_MODES]{};
 	u32 pc{};
+	u32 pipeline[3]{};
 
 	bool halted{};
 
