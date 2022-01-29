@@ -374,7 +374,7 @@ read_end:
 						}\
 						prefetch.init(addr + sizeof(T));\
 					} else {\
-						cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];\
+						cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][NSEQ][width_index];\
 						prefetch.init(addr + sizeof(T));\
 					}\
 				}\
