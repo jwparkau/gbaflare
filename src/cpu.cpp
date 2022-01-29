@@ -449,12 +449,15 @@ void CPU::nocycle_write32_noalign(addr_t addr, u32 data)
 
 void CPU::icycle()
 {
-	cpu_cycles += 1;
+	icycle(1);
 }
 
 void CPU::icycle(int n)
 {
 	cpu_cycles += n;
+	if (prefetch_enabled) {
+		prefetch.step(n);
+	}
 }
 
 DEFINE_READ_WRITE(CPU)

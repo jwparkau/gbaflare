@@ -21,6 +21,7 @@ u8 sram_data[SRAM_SIZE];
 u32 last_bios_opcode;
 
 bool prefetch_enabled;
+Prefetch prefetch;
 
 u8 *const region_to_data[NUM_REGIONS] = {
 	nullptr,
@@ -238,5 +239,41 @@ void on_waitcnth_write(u8 value)
 	cartridge_cycles[2][SEQ][1] = 1 + wait2_seq;
 	cartridge_cycles[2][SEQ][2] = 2 * (1 + wait2_seq);
 
-	prefetch_enabled = value & BIT(6);
+	bool enabled = value & BIT(6);
+	if (!prefetch_enabled & enabled) {
+		prefetch.reset();
+	}
+	prefetch_enabled = enabled;
+}
+
+void Prefetch::reset()
+{
+	start = 0;
+	current = 0;
+	size = 0;
+	cycles = 0;
+}
+
+void Prefetch::step(int n)
+{
+	for (int i = 0; i < n; i++) {
+		cycles--;
+		if (cycles == 0) {
+			current += 2;
+			cycles = cartridge_cycles[((current >> 24) - 8) / 2 % 3][SEQ][1];
+			size += 2;
+			if (size > 16) {
+				size = 16;
+				start += 2;
+			}
+		}
+	}
+}
+
+void Prefetch::init(addr_t addr)
+{
+	start = addr;
+	current = addr;
+	cycles = cartridge_cycles[((addr >> 24) - 8) / 2 % 3][SEQ][1];
+	size = 0;
 }
