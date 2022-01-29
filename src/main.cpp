@@ -41,6 +41,8 @@ void main_loop(char **argv)
 	next_event = 960;
 
 	//platform_on_vblank();
+	//
+	cpu_cycles = 0;
 
 	for (;;) {
 		if (!emulator_running) {

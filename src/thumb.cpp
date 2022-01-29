@@ -315,6 +315,9 @@ void thumb_alu(u16 op)
 
 	if constexpr (aluop == 2 || aluop == 3 || aluop == 4 || aluop == 7) {
 		cpu.icycle();
+	}
+
+	if constexpr (aluop == 2 || aluop == 3 || aluop == 4 || aluop == 7 || aluop == 0xD) {
 		if (!prefetch_enabled) {
 			cpu.nfetch();
 		} else {

@@ -27,7 +27,7 @@ void DMA::step_channel(int ch)
 	int width = GET_FLAG(t.cnt_h, DMA_TRANSFER32) ? 4 : 2;
 
 	bool first = t.count == 0;
-	if (first) {
+	if (first && GET_FLAG(t.cnt_h, DMA_TRIGGER) == DMA_TRIGGER_NOW) {
 		cpu_cycles += 2;
 	}
 
