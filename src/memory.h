@@ -337,6 +337,7 @@ template<typename T, int whence, int type> T read(addr_t addr)
 
 read_end:
 	;
+	u64 old = cpu_cycles;
 
 	if constexpr (type == NOCYCLES) {
 		;
@@ -361,9 +362,11 @@ read_end:
 					cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
 				} else {
 					if (addr == prefetch.start && prefetch.size >= sizeof(T)) {
+						prefetch.step(1);
 						cpu_cycles += 1;
 						if constexpr (sizeof(T) == sizeof(u32)) {
 							cpu_cycles += 1;
+							prefetch.step(1);
 						}
 						prefetch.start += sizeof(T);
 						prefetch.size -= sizeof(T);
@@ -384,8 +387,10 @@ read_end:
 		}
 	}
 
+	old = cpu_cycles - old;
+
 	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {
-		prefetch.step(1);
+		prefetch.step(old);
 	}
 
 	return ret;
@@ -447,6 +452,8 @@ template<typename T, int whence, int type> void write(addr_t addr, T data)
 	writearr<T>(arr, offset, data);
 write_end:
 	;
+	u64 old = cpu_cycles;
+
 	if constexpr (type == NOCYCLES) {
 		;
 	} else {
@@ -473,8 +480,10 @@ write_end:
 		}
 	}
 
+	old = cpu_cycles - old;
+
 	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {
-		prefetch.step(1);
+		prefetch.step(old);
 	}
 }
 
