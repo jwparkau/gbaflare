@@ -338,56 +338,55 @@ template<typename T, int whence, int type> T read(addr_t addr)
 read_end:
 	;
 
-#define CALCULATE_CYCLES \
-	if constexpr (type == NOCYCLES) {\
-		;\
-	} else {\
-		int width_index;\
-		if constexpr (sizeof(T) == sizeof(u8)) {\
-			width_index = 0;\
-		} else if constexpr (sizeof(T) == sizeof(u16)) {\
-			width_index = 1;\
-		} else {\
-			width_index = 2;\
-		}\
-\
-		if (region == MemoryRegion::CARTRIDGE) {\
-			if constexpr (type == NODELAY) {\
-				cpu_cycles += 1;\
-				if constexpr (sizeof(T) == sizeof(u32)) {\
-					cpu_cycles += 1;\
-				}\
-			} else {\
-				if (!prefetch_enabled) {\
-					cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];\
-				} else {\
-					if (addr == prefetch.start && prefetch.size >= sizeof(T)) {\
-						cpu_cycles += 1;\
-						if constexpr (sizeof(T) == sizeof(u32)) {\
-							cpu_cycles += 1;\
-						}\
-						prefetch.start += sizeof(T);\
-					} else if (addr == prefetch.start) {\
-						while (prefetch.size < sizeof(T)) {\
-							cpu_cycles += prefetch.cycles;\
-							prefetch.step(prefetch.cycles);\
-						}\
-						prefetch.init(addr + sizeof(T));\
-					} else {\
-						cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][NSEQ][width_index];\
-						prefetch.init(addr + sizeof(T));\
-					}\
-				}\
-			}\
-		} else {\
-			cpu_cycles += waitstate_cycles[region][width_index];\
-		}\
-	}\
-\
-	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {\
-		prefetch.step(1);\
+	if constexpr (type == NOCYCLES) {
+		;
+	} else {
+		int width_index;
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			width_index = 0;
+		} else if constexpr (sizeof(T) == sizeof(u16)) {
+			width_index = 1;
+		} else {
+			width_index = 2;
+		}
+
+		if (region == MemoryRegion::CARTRIDGE) {
+			if constexpr (type == NODELAY) {
+				cpu_cycles += 1;
+				if constexpr (sizeof(T) == sizeof(u32)) {
+					cpu_cycles += 1;
+				}
+			} else {
+				if (!prefetch_enabled) {
+					cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+				} else {
+					if (addr == prefetch.start && prefetch.size >= sizeof(T)) {
+						cpu_cycles += 1;
+						if constexpr (sizeof(T) == sizeof(u32)) {
+							cpu_cycles += 1;
+						}
+						prefetch.start += sizeof(T);
+						prefetch.size -= sizeof(T);
+					} else if (addr == prefetch.start) {
+						while (prefetch.size < sizeof(T)) {
+							cpu_cycles += prefetch.cycles;
+							prefetch.step(prefetch.cycles);
+						}
+						prefetch.init(addr + sizeof(T));
+					} else {
+						cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][NSEQ][width_index];
+						prefetch.init(addr + sizeof(T));
+					}
+				}
+			}
+		} else {
+			cpu_cycles += waitstate_cycles[region][width_index];
+		}
 	}
-	CALCULATE_CYCLES;
+
+	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {
+		prefetch.step(1);
+	}
 
 	return ret;
 }
@@ -448,7 +447,35 @@ template<typename T, int whence, int type> void write(addr_t addr, T data)
 	writearr<T>(arr, offset, data);
 write_end:
 	;
-	CALCULATE_CYCLES;
+	if constexpr (type == NOCYCLES) {
+		;
+	} else {
+		int width_index;
+		if constexpr (sizeof(T) == sizeof(u8)) {
+			width_index = 0;
+		} else if constexpr (sizeof(T) == sizeof(u16)) {
+			width_index = 1;
+		} else {
+			width_index = 2;
+		}
+
+		if (region == MemoryRegion::CARTRIDGE) {
+			if constexpr (type == NODELAY) {
+				cpu_cycles += 1;
+				if constexpr (sizeof(T) == sizeof(u32)) {
+					cpu_cycles += 1;
+				}
+			} else {
+				cpu_cycles += cartridge_cycles[(((addr >> 24) - 8) / 2)%3][type][width_index];
+			}
+		} else {
+			cpu_cycles += waitstate_cycles[region][width_index];
+		}
+	}
+
+	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {
+		prefetch.step(1);
+	}
 }
 
 template<typename T, int whence> T mmio_read(addr_t addr)
