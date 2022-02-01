@@ -39,8 +39,6 @@ void PPU::step()
 	cycles += elapsed;
 
 	if (cycles >= 1232) {
-		cycles = 0;
-
 		LY() += 1;
 		if (LY() >= 228) {
 			LY() = 0;
@@ -96,6 +94,10 @@ void PPU::step()
 		schedule_after(960 - (cycles % 1232));
 	} else {
 		schedule_after(1232 - cycles);
+	}
+
+	if (cycles >= 1232) {
+		cycles -= 1232;
 	}
 }
 

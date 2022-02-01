@@ -10,6 +10,12 @@
 #define LCD_HEIGHT 160l
 #define FRAMEBUFFER_SIZE 38400l
 
+#define SAMPLE_RATE 32768
+#define AUDIOBUFFER_SIZE 40000
+#define SAMPLES_PER_FRAME 1096
+
+constexpr double FPS = 59.72750057;
+
 int platform_init();
 void platform_on_vblank();
 
@@ -25,6 +31,9 @@ extern u16 real_framebuffer[FRAMEBUFFER_SIZE];
 extern std::binary_semaphore frame_rendered, frame_drawn;
 extern std::mutex f_lock;
 
+extern s16 audiobuffer[AUDIOBUFFER_SIZE];
+extern s16 real_audiobuffer[AUDIOBUFFER_SIZE];
+extern std::atomic_uint32_t audio_buffer_index;
 
 #ifdef PLATFORM_USE_SDL2
 #include "platform_sdl.h"

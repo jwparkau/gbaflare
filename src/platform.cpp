@@ -19,6 +19,10 @@ u16 real_framebuffer[FRAMEBUFFER_SIZE];
 std::binary_semaphore frame_rendered{1}, frame_drawn{0};
 std::mutex f_lock;
 
+s16 audiobuffer[AUDIOBUFFER_SIZE];
+s16 real_audiobuffer[AUDIOBUFFER_SIZE];
+std::atomic_uint32_t audio_buffer_index;
+
 int platform_init()
 {
 	return platform.init();
@@ -27,11 +31,12 @@ int platform_init()
 void platform_on_vblank()
 {
 	static auto tick_start = std::chrono::steady_clock::now();
-	static std::chrono::duration<double> frame_duration(1.0 / 60);
+	static std::chrono::duration<double> frame_duration(1.0 / FPS);
 
 	frame_rendered.acquire();
 	f_lock.lock();
 	std::memcpy(real_framebuffer, framebuffer, FRAMEBUFFER_SIZE * sizeof(*framebuffer));
+	std::memcpy(real_audiobuffer, audiobuffer, AUDIOBUFFER_SIZE * sizeof(*audiobuffer));
 	f_lock.unlock();
 	frame_drawn.release();
 
@@ -72,6 +77,7 @@ int main(int argc, char **argv)
 		frame_drawn.acquire();
 		f_lock.lock();
 		platform.render(real_framebuffer);
+		platform.queue_audio();
 		platform.handle_input();
 		f_lock.unlock();
 		frame_rendered.release();

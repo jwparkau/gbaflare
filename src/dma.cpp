@@ -1,6 +1,7 @@
 #include "dma.h"
 #include "memory.h"
 #include "scheduler.h"
+#include "apu.h"
 
 #include <bit>
 #include <iostream>
@@ -139,8 +140,8 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 			cnt_l = 4;
 			SET_FLAG(cnt_h, DMA_DESTCNT, DMA_FIXED);
 		}
-		sad = align(sad, width);
 		dad = align(dad, width);
+		sad = align(sad, width);
 
 		transfers[ch] = {sad, dad, cnt_l, cnt_h, 0};
 

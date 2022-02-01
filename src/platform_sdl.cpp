@@ -55,12 +55,30 @@ int Platform::init()
 
 	add_controller();
 
-	emulator_running = true;
+	audio_spec_want.freq = SAMPLE_RATE;
+	audio_spec_want.format = AUDIO_S16SYS;
+	audio_spec_want.channels = 2;
+	audio_spec_want.samples = SAMPLES_PER_FRAME + 100;
+	audio_spec_want.callback = nullptr;
+
+	audio_device = SDL_OpenAudioDevice(nullptr, false, &audio_spec_want, &audio_spec_have, 0);
+	if (!audio_device) {
+		printf("could not init audio device\n");
+		goto init_failed;
+	}
+
+	SDL_PauseAudioDevice(audio_device, 0);
 
 	render(real_framebuffer);
+	emulator_running = true;
 	return PLATFORM_INIT_SUCCESS;
 
 init_failed:
+	if (audio_device) {
+		SDL_CloseAudioDevice(audio_device);
+	}
+	audio_device = 0;
+
 	if (texture) {
 		SDL_DestroyTexture(texture);
 	}
@@ -119,6 +137,17 @@ void Platform::render(u16 *pixels)
 	SDL_RenderPresent(renderer);
 }
 
+void Platform::queue_audio()
+{
+	if (!audio_device) {
+		return;
+	}
+
+	SDL_QueueAudio(audio_device, real_audiobuffer, SAMPLES_PER_FRAME * sizeof(*real_audiobuffer));
+	audio_buffer_index = 0;
+}
+
+
 void Platform::handle_input()
 {
 	SDL_Event e;
@@ -131,6 +160,13 @@ void Platform::handle_input()
 
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_0) {
 			throttle_enabled = !throttle_enabled;
+			if (!throttle_enabled) {
+				SDL_PauseAudioDevice(audio_device, 1);
+			} else {
+				SDL_PauseAudioDevice(audio_device, 0);
+				SDL_ClearQueuedAudio(audio_device);
+				audio_buffer_index = 0;
+			}
 		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_p) {
 			print_fps = !print_fps;
 		}

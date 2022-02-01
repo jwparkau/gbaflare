@@ -9,6 +9,7 @@
 #include "flash.h"
 #include "platform.h"
 #include "scheduler.h"
+#include "apu.h"
 
 #include <string>
 
@@ -84,6 +85,13 @@ enum io_registers : u32 {
 	IO_BLDCNT	= 0x0400'0050,
 	IO_BLDALPHA	= 0x0400'0052,
 	IO_BLDY		= 0x0400'0054,
+	IO_SOUNDCNT_L	= 0x0400'0080,
+	IO_SOUNDCNT_H	= 0x0400'0082,
+	IO_SOUNDCNT_X	= 0x0400'0084,
+	IO_FIFO_A_L	= 0x0400'00A0,
+	IO_FIFO_A_H	= 0x0400'00A2,
+	IO_FIFO_B_L	= 0x0400'00A4,
+	IO_FIFO_B_H	= 0x0400'00A6,
 	IO_DMA0SAD	= 0x0400'00B0,
 	IO_DMA0DAD	= 0x0400'00B4,
 	IO_DMA0CNT_L	= 0x0400'00B8,
@@ -578,6 +586,15 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 				break;
 			case IO_WAITCNT + 1:
 				on_waitcnth_write(new_value);
+				break;
+		}
+
+		switch (addr) {
+			case IO_FIFO_A_L:
+				fifos[0].enqueue8(new_value);
+				break;
+			case IO_FIFO_B_L:
+				fifos[1].enqueue8(new_value);
 				break;
 		}
 

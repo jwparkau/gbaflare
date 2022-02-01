@@ -79,6 +79,10 @@ void Timer::on_timer_overflow(int i)
 	}
 
 	values[i] = readarr<u16>(io_data, IO_TM0CNT_L - IO_START + i*4);
+
+	if (i < 2) {
+		apu.on_timer_overflow(i);
+	}
 }
 
 u8 Timer::on_read(addr_t addr)

@@ -21,6 +21,7 @@ target_sources(gbaflare PUBLIC
 	scheduler.cpp
 	dma.cpp
 	flash.cpp
+	apu.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

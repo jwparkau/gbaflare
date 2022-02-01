@@ -40,7 +40,7 @@ enum dma_channels {
 	DMA_0	= 0x1,
 	DMA_1	= 0x2,
 	DMA_2	= 0x4,
-	DMA_4	= 0x8
+	DMA_3	= 0x8
 };
 
 struct dma_transfer {

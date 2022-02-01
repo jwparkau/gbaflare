@@ -15,6 +15,9 @@ struct Platform {
 	SDL_Renderer *renderer{};
 	SDL_Texture *texture{};
 	SDL_GameController *controller{};
+	SDL_AudioDeviceID audio_device{};
+	SDL_AudioSpec audio_spec_want{};
+	SDL_AudioSpec audio_spec_have{};
 
 	void add_controller();
 	void remove_controller();
@@ -27,6 +30,7 @@ struct Platform {
 
 	void render(u16 *pixels);
 	void handle_input();
+	void queue_audio();
 };
 
 #endif

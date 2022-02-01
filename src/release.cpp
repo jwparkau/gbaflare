@@ -11,3 +11,4 @@
 #include "scheduler.cpp"
 #include "dma.cpp"
 #include "flash.cpp"
+#include "apu.cpp"
