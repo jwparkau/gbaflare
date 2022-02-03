@@ -43,6 +43,7 @@ struct APU {
 
 	void step();
 	void on_timer_overflow(int i);
+	void on_write(addr_t addr, u8 old_value, u8 new_value);
 };
 
 extern APU apu;

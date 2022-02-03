@@ -92,3 +92,15 @@ void APU::on_timer_overflow(int i)
 		}
 	}
 }
+
+void APU::on_write(addr_t addr, u8 old_value, u8 new_value)
+{
+	if (addr == IO_SOUNDCNT_H + 1) {
+		if (new_value & BIT(3)) {
+			fifos[0].reset();
+		}
+		if (new_value & BIT(7)) {
+			fifos[1].reset();
+		}
+	}
+}

@@ -555,6 +555,9 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 				mask = to_write;
 				to_write = 0;
 				break;
+			case IO_SOUNDCNT_H + 1:
+				mask = 0x77;
+				break;
 			default:
 				mask = 0xFF;
 		}
@@ -587,6 +590,9 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 				break;
 			case IO_WAITCNT + 1:
 				on_waitcnth_write(new_value);
+				break;
+			case IO_SOUNDCNT_H + 1:
+				apu.on_write(addr + i, old_value, new_value);
 				break;
 		}
 
