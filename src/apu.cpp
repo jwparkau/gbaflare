@@ -58,7 +58,7 @@ void APU::step()
 	u16 soundcnt_h = io_read<u16>(IO_SOUNDCNT_H);
 	if (soundcnt_x & SOUND_MASTER_ENABLE) {
 		for (int i = 0; i < 2; i++) {
-			s8 v = fifo_v[i];
+			int v = fifo_v[i] * 4; // 8 -> 10 bit range;
 			if (soundcnt_h & (DMA_A_VOL * BIT(i))) {
 				v /= 2;
 			}
@@ -73,8 +73,10 @@ void APU::step()
 		}
 	}
 
-	audiobuffer[audio_buffer_index++] = left*256;
-	audiobuffer[audio_buffer_index++] = right*256;
+	int k = 20;
+
+	audiobuffer[audio_buffer_index++] = left*k;
+	audiobuffer[audio_buffer_index++] = right*k;
 	schedule_after(512 - cycles);
 }
 
