@@ -86,7 +86,7 @@ void APU::on_timer_overflow(int i)
 	for (int k = 0; k < 2; k++) {
 		if ((bool)(soundcnt_h & (DMA_A_TIMER * BIT(k*4))) == i) {
 			fifo_v[k] = fifos[k].dequeue();
-			if (fifos[k].size <= 16) {
+			if (fifos[k].size <= 16 && dma.transfers[k+1].enabled() && dma.transfers[k+1].is_special()) {
 				dma.dma_active |= BIT(k+1);
 			}
 		}

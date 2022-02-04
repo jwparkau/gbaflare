@@ -49,6 +49,16 @@ struct dma_transfer {
 	u32 cnt_l;
 	u32 cnt_h;
 	u32 count;
+
+	bool enabled()
+	{
+		return GET_FLAG(cnt_h, DMA_ENABLED);
+	}
+
+	bool is_special()
+	{
+		return GET_FLAG(cnt_h, DMA_TRIGGER) == DMA_TRIGGER_SPECIAL;
+	}
 };
 
 struct DMA {

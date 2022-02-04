@@ -78,7 +78,10 @@ void DMA::step_channel(int ch)
 		if (GET_FLAG(t.cnt_h, DMA_REPEAT) && GET_FLAG(t.cnt_h, DMA_TRIGGER) != DMA_TRIGGER_NOW) {
 			t.cnt_l = load_cnt_l(ch);
 			if (destcnt == 3) {
-				t.dad = load_dad(ch);
+				t.dad = align(load_dad(ch), width);
+			}
+			if (t.is_special() && (ch == 1 || ch == 2)) {
+				t.cnt_l = 4;
 			}
 		} else {
 			io_data[IO_DMA0CNT_H - IO_START + ch*12 + 1] &= ~0x80;
