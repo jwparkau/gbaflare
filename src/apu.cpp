@@ -45,8 +45,8 @@ u8 FIFO::dequeue()
 void APU::step()
 {
 	cycles += elapsed;
-	if (cycles >= 512) {
-		cycles -= 512;
+	if (cycles >= CYCLES_PER_SAMPLE) {
+		cycles -= CYCLES_PER_SAMPLE;
 	} else {
 		return;
 	}
@@ -77,7 +77,7 @@ void APU::step()
 
 	audiobuffer[audio_buffer_index++] = left*k;
 	audiobuffer[audio_buffer_index++] = right*k;
-	schedule_after(512 - cycles);
+	schedule_after(CYCLES_PER_SAMPLE - cycles);
 }
 
 void APU::on_timer_overflow(int i)

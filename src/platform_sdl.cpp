@@ -67,6 +67,8 @@ int Platform::init()
 		goto init_failed;
 	}
 
+	printf("audio: got sample rate %d\n", audio_spec_have.freq);
+
 	SDL_PauseAudioDevice(audio_device, 0);
 
 	render(real_framebuffer);

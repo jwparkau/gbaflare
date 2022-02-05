@@ -38,7 +38,7 @@ void main_loop(char **argv)
 	cpu.flush_pipeline();
 	cpu.sfetch();
 
-	next_event = 960;
+	next_event = 512;
 
 	//platform_on_vblank();
 	//
