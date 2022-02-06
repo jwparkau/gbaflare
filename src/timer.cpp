@@ -45,7 +45,7 @@ void Timer::simulate_elapsed(u64 dt)
 		}
 
 		if (value_changed) {
-			schedule_after((0x10000 - values[i]) * freq);
+			schedule_after((0x10000 - values[i]) * freq - tcycles[i]);
 		}
 	}
 }
