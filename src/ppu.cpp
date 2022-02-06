@@ -38,7 +38,11 @@ void PPU::step()
 {
 	cycles += elapsed;
 
+	bool next_line = false;
+
 	if (cycles >= 1232) {
+		cycles -= 1232;
+
 		LY() += 1;
 		if (LY() >= 228) {
 			LY() = 0;
@@ -51,53 +55,54 @@ void PPU::step()
 		} else {
 			DISPSTAT() &= ~LCD_VCOUNTER;
 		}
+
+		next_line = true;
 	}
 
 	switch (ppu_mode) {
 		case PPU_IN_DRAW:
 			if (cycles >= 960) {
 				ppu_mode = PPU_IN_HBLANK;
+				SET_AND_REQ_IRQ(HBLANK);
 				on_hblank();
 			}
 			break;
 		case PPU_IN_HBLANK:
-			if (cycles < 960 || cycles >= 1232) {
+			if (next_line) {
 				if (ly == 160) {
-					ppu_mode = PPU_IN_VBLANK;
+					ppu_mode = PPU_IN_VBLANK_1;
 					on_vblank();
 				} else {
 					ppu_mode = PPU_IN_DRAW;
 				}
+				DISPSTAT() &= ~LCD_HBLANK;
 			}
 			break;
-		case PPU_IN_VBLANK:
-			if (cycles == 0 || cycles >= 1232) {
+		case PPU_IN_VBLANK_1:
+			if (cycles >= 960) {
+				ppu_mode = PPU_IN_VBLANK_2;
+				SET_AND_REQ_IRQ(HBLANK);
+			}
+			break;
+		case PPU_IN_VBLANK_2:
+			if (next_line) {
 				if (ly == 227) {
 					DISPSTAT() &= ~LCD_VBLANK;
 				}
 				if (ly == 0) {
 					ppu_mode = PPU_IN_DRAW;
+				} else {
+					ppu_mode = PPU_IN_VBLANK_1;
 				}
+				DISPSTAT() &= ~LCD_HBLANK;
 			}
 			break;
 	}
 
-	if (cycles >= 960) {
-		SET_AND_REQ_IRQ(HBLANK);
-	}
-
-	if (cycles == 0 || cycles >= 1232) {
-		DISPSTAT() &= ~LCD_HBLANK;
-	}
-
-	if (cycles < 960 || cycles >= 1232) {
-		schedule_after(960 - (cycles % 1232));
+	if (cycles < 960) {
+		schedule_after(960 - cycles);
 	} else {
 		schedule_after(1232 - cycles);
-	}
-
-	if (cycles >= 1232) {
-		cycles -= 1232;
 	}
 }
 

@@ -34,7 +34,8 @@ enum io_dispstat_flags {
 enum ppu_modes {
 	PPU_IN_DRAW,
 	PPU_IN_HBLANK,
-	PPU_IN_VBLANK
+	PPU_IN_VBLANK_1,
+	PPU_IN_VBLANK_2
 };
 
 enum render_layers {
