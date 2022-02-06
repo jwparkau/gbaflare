@@ -39,6 +39,7 @@ extern FIFO fifos[2];
 
 struct APU {
 	u32 cycles{};
+	u32 last{};
 	s8 fifo_v[2]{};
 
 	void step();

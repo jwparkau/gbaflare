@@ -68,6 +68,7 @@ int Platform::init()
 	}
 
 	printf("audio: got sample rate %d\n", audio_spec_have.freq);
+	printf("audio: got buffer size %d\n", audio_spec_have.samples);
 
 	SDL_PauseAudioDevice(audio_device, 0);
 

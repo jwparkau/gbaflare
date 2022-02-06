@@ -47,36 +47,35 @@ void APU::step()
 	cycles += elapsed;
 	if (cycles >= CYCLES_PER_SAMPLE) {
 		cycles -= CYCLES_PER_SAMPLE;
-	} else {
-		return;
-	}
 
-	s16 left = 0;
-	s16 right = 0;
+		s16 left = 0;
+		s16 right = 0;
 
-	u16 soundcnt_x = io_read<u16>(IO_SOUNDCNT_X);
-	u16 soundcnt_h = io_read<u16>(IO_SOUNDCNT_H);
-	if (soundcnt_x & SOUND_MASTER_ENABLE) {
-		for (int i = 0; i < 2; i++) {
-			int v = fifo_v[i] * 4; // 8 -> 10 bit range;
-			if (soundcnt_h & (DMA_A_VOL * BIT(i))) {
-				v /= 2;
-			}
+		u16 soundcnt_x = io_read<u16>(IO_SOUNDCNT_X);
+		u16 soundcnt_h = io_read<u16>(IO_SOUNDCNT_H);
+		if (soundcnt_x & SOUND_MASTER_ENABLE) {
+			for (int i = 0; i < 2; i++) {
+				int v = fifo_v[i] * 4; // 8 -> 10 bit range;
+				if (soundcnt_h & (DMA_A_VOL * BIT(i))) {
+					v /= 2;
+				}
 
-			if (soundcnt_h & (DMA_A_LEFT * BIT(i*4))) {
-				left += v;
-			}
+				if (soundcnt_h & (DMA_A_LEFT * BIT(i*4))) {
+					left += v;
+				}
 
-			if (soundcnt_h & (DMA_A_RIGHT * BIT(i*4))) {
-				right += v;
+				if (soundcnt_h & (DMA_A_RIGHT * BIT(i*4))) {
+					right += v;
+				}
 			}
 		}
+
+		int k = 20;
+
+		audiobuffer[audio_buffer_index++] = left*k;
+		audiobuffer[audio_buffer_index++] = right*k;
 	}
 
-	int k = 20;
-
-	audiobuffer[audio_buffer_index++] = left*k;
-	audiobuffer[audio_buffer_index++] = right*k;
 	schedule_after(CYCLES_PER_SAMPLE - cycles);
 }
 

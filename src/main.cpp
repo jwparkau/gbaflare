@@ -38,7 +38,7 @@ void main_loop(char **argv)
 	cpu.flush_pipeline();
 	cpu.sfetch();
 
-	next_event = 512;
+	next_event = CYCLES_PER_SAMPLE;
 
 	//platform_on_vblank();
 	//
