@@ -22,6 +22,7 @@ target_sources(gbaflare PUBLIC
 	dma.cpp
 	flash.cpp
 	apu.cpp
+	channel.cpp
 )
 
 target_include_directories(gbaflare PUBLIC

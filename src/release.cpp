@@ -12,3 +12,4 @@
 #include "dma.cpp"
 #include "flash.cpp"
 #include "apu.cpp"
+#include "channel.cpp"

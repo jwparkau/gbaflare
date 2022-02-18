@@ -18,6 +18,8 @@ u8 oam_data[OAM_SIZE];
 u8 cartridge_data[CARTRIDGE_SIZE];
 u8 sram_data[SRAM_SIZE];
 
+u8 wave_ram[2][16];
+
 u32 last_bios_opcode;
 
 bool prefetch_enabled;

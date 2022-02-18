@@ -61,6 +61,7 @@ void main_loop(char **argv)
 
 		timer.step();
 		ppu.step();
+		apu.channel_step();
 		apu.step();
 
 		end_event_processing();

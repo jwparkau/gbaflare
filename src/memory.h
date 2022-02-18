@@ -10,6 +10,7 @@
 #include "platform.h"
 #include "scheduler.h"
 #include "apu.h"
+#include "channel.h"
 
 #include <string>
 
@@ -85,6 +86,17 @@ enum io_registers : u32 {
 	IO_BLDCNT	= 0x0400'0050,
 	IO_BLDALPHA	= 0x0400'0052,
 	IO_BLDY		= 0x0400'0054,
+	IO_SOUND1CNT_L	= 0x0400'0060,
+	IO_SOUND1CNT_H	= 0x0400'0062,
+	IO_SOUND1CNT_X	= 0x0400'0064,
+	IO_SOUND2CNT_L	= 0x0400'0068,
+	IO_SOUND2CNT_H	= 0x0400'006C,
+	IO_SOUND3CNT_L	= 0x0400'0070,
+	IO_SOUND3CNT_H	= 0x0400'0072,
+	IO_SOUND3CNT_X	= 0x0400'0074,
+	IO_SOUND4CNT_L	= 0x0400'0078,
+	IO_SOUND4CNT_H	= 0x0400'007C,
+	IO_WAVERAM0_L	= 0x0400'0090,
 	IO_SOUNDCNT_L	= 0x0400'0080,
 	IO_SOUNDCNT_H	= 0x0400'0082,
 	IO_SOUNDCNT_X	= 0x0400'0084,
@@ -119,6 +131,8 @@ enum io_registers : u32 {
 	IO_IME		= 0x0400'0208,
 	IO_HALTCNT	= 0x0400'0301
 };
+
+#define WAVE_BANK() (io_data[IO_SOUND3CNT_L - IO_START] >> 6 & 1)
 
 enum io_request_flags : u32 {
 	IRQ_VBLANK	= 0x1,
@@ -204,6 +218,8 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 extern u8 sram_data[SRAM_SIZE];
+
+extern u8 wave_ram[2][16];
 
 extern u8 *const region_to_data[NUM_REGIONS];
 extern u8 *const region_to_data_write[NUM_REGIONS];
@@ -503,7 +519,12 @@ template<typename T, int whence> T mmio_read(addr_t addr)
 	for (std::size_t i = 0; i < sizeof(T); i++) {
 		u32 offset = addr - IO_START + i;
 
-		u32 value = io_data[offset];
+		u32 value;
+		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
+			value = wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L];
+		} else {
+			value = io_data[offset];
+		}
 
 		switch (addr + i) {
 			case IO_TM0CNT_L:
@@ -594,6 +615,38 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 			case IO_SOUNDCNT_H + 1:
 				apu.on_write(addr + i, old_value, new_value);
 				break;
+			case IO_SOUND1CNT_X + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(1);
+				}
+				break;
+			case IO_SOUND2CNT_H + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(2);
+				}
+				break;
+			case IO_SOUND3CNT_X + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(3);
+				}
+				break;
+			case IO_SOUND4CNT_H + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(4);
+				}
+				break;
+			case IO_SOUND1CNT_H:
+				psg_load_length_timer(1, new_value);
+				break;
+			case IO_SOUND2CNT_L:
+				psg_load_length_timer(2, new_value);
+				break;
+			case IO_SOUND3CNT_H:
+				psg_load_length_timer(3, new_value);
+				break;
+			case IO_SOUND4CNT_L:
+				psg_load_length_timer(4, new_value);
+				break;
 		}
 
 		switch (addr) {
@@ -609,7 +662,11 @@ template<typename T, int whence> void mmio_write(addr_t addr, T data)
 			update_affine_ref = true;
 		}
 
-		io_data[offset] = new_value;
+		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
+			wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L] = new_value;
+		} else {
+			io_data[offset] = new_value;
+		}
 		x >>= 8;
 	}
 
