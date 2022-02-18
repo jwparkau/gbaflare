@@ -389,10 +389,6 @@ read_end:
 					if (addr == prefetch.start && prefetch.size >= sizeof(T)) {
 						prefetch.step(1);
 						cpu_cycles += 1;
-						if constexpr (sizeof(T) == sizeof(u32)) {
-							cpu_cycles += 1;
-							prefetch.step(1);
-						}
 						prefetch.start += sizeof(T);
 						prefetch.size -= sizeof(T);
 					} else if (addr == prefetch.start) {
