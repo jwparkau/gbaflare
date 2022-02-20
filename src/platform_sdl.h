@@ -1,7 +1,7 @@
 #ifndef GBAFLARE_PLATFORM_SDL2_H
 #define GBAFLARE_PLATFORM_SDL2_H
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "types.h"
 
