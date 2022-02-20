@@ -4,6 +4,7 @@
 #include <SDL.h>
 
 #include "types.h"
+#include <string>
 
 enum platform_error {
 	PLATFORM_INIT_SUCCESS,
@@ -31,6 +32,7 @@ struct Platform {
 	void render(u16 *pixels);
 	void handle_input();
 	void queue_audio();
+	void wait_for_cartridge_file(std::string &s);
 };
 
 #endif

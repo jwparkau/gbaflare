@@ -150,6 +150,31 @@ void Platform::queue_audio()
 	audio_buffer_index = 0;
 }
 
+void Platform::wait_for_cartridge_file(std::string &s)
+{
+	while (s.length() == 0) {
+		SDL_Event e;
+		while (SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT) {
+				return;
+			}
+
+			if (e.type == SDL_DROPFILE) {
+				char *filename = e.drop.file;
+				s = std::string(filename);
+				SDL_free(filename);
+				return;
+			}
+		}
+
+		SDL_Delay(16);
+	}
+
+	SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
+	SDL_RenderClear(renderer);
+	SDL_RenderPresent(renderer);
+}
+
 
 void Platform::handle_input()
 {

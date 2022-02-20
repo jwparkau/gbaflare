@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "main.h"
 
+#include <string>
 #include <stdexcept>
 #include <iostream>
 #include <chrono>
@@ -57,17 +58,26 @@ int main(int argc, char **argv)
 {
 	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
 
-	if (argc != 2) {
-		fprintf(stderr, "no cartridge file specified\n");
-		exit(EXIT_FAILURE);
-	}
-
 	int err = platform_init();
 	if (err) {
 		return EXIT_FAILURE;
 	}
 
-	std::thread emu_thread(main_loop, argv);
+	std::string cartridge_filename;
+	if (argc >= 2) {
+		cartridge_filename = std::string(argv[1]);
+	} else {
+		platform.wait_for_cartridge_file(cartridge_filename);
+	}
+
+	if (cartridge_filename.length() == 0) {
+		fprintf(stderr, "no cartridge file\n");
+		return EXIT_FAILURE;
+	}
+
+	emulator_init(cartridge_filename);
+
+	std::thread emu_thread(main_loop);
 
 	while (emulator_running) {
 		frame_drawn.acquire();
@@ -80,6 +90,8 @@ int main(int argc, char **argv)
 	}
 
 	emu_thread.join();
+
+	emulator_close();
 
 	return 0;
 }

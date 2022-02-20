@@ -1,6 +1,10 @@
 #ifndef GBAFLARE_MAIN_H
 #define GBAFLARE_MAIN_H
 
-void main_loop(char **argv);
+#include <string>
+
+void emulator_init(const std::string &cartridge_filename);
+void main_loop();
+void emulator_close();
 
 #endif

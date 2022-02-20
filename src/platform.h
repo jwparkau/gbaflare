@@ -5,6 +5,7 @@
 #include <semaphore>
 #include <atomic>
 #include <mutex>
+#include <string>
 
 #define LCD_WIDTH 240l
 #define LCD_HEIGHT 160l

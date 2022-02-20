@@ -12,13 +12,13 @@
 #include "scheduler.h"
 #include "dma.h"
 
-void main_loop(char **argv)
+void emulator_init(const std::string &cartridge_filename)
 {
 	set_initial_memory_state();
 
 	load_bios_rom("../boot/gba_bios.bin");
 
-	cartridge.filename = std::string(argv[1]);
+	cartridge.filename = cartridge_filename;
 	cartridge.save_file = cartridge.filename + ".flaresav";
 
 	load_cartridge_rom();
@@ -33,15 +33,14 @@ void main_loop(char **argv)
 			load_flash();
 			break;
 	}
+}
 
-	//cpu.fakeboot();
+void main_loop()
+{
 	cpu.flush_pipeline();
 	cpu.sfetch();
 
 	next_event = CYCLES_PER_SAMPLE;
-
-	//platform_on_vblank();
-	//
 	cpu_cycles = 0;
 
 	for (;;) {
@@ -66,7 +65,10 @@ void main_loop(char **argv)
 
 		end_event_processing();
 	}
+}
 
+void emulator_close()
+{
 	switch (cartridge.save_type) {
 		case SAVE_SRAM:
 			save_sram();
