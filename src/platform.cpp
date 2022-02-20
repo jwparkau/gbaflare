@@ -7,6 +7,17 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <fstream>
+#include <cstdlib>
+#include <filesystem>
+
+const char *bios_filenames[] = {
+	"gba_bios.bin",
+	nullptr
+};
+
+
+const std::string prog_name = "gbaflare";
 
 std::atomic_bool emulator_running;
 std::atomic_bool throttle_enabled = true;
@@ -43,7 +54,7 @@ void platform_on_vblank()
 
 	std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
 	if (print_fps) {
-		printf("fps: %f\n", 1 / sec.count());
+		fprintf(stderr, "fps: %f\n", 1 / sec.count());
 	}
 
 	if (throttle_enabled) {
@@ -58,19 +69,36 @@ int main(int argc, char **argv)
 {
 	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
 
+	Arguments args;
+
+	const char **fn;
+	for (fn = bios_filenames; *fn; fn++) {
+		fprintf(stderr, "trying bios file %s\n", *fn);
+		std::ifstream f(*fn);
+		if (f.good()) {
+			break;
+		}
+	}
+	if (*fn) {
+		args.bios_filename = std::string(*fn);
+	} else {
+		int err = find_bios_file(args.bios_filename);
+		if (err) {
+			fprintf(stderr, "no bios file\n");
+			return EXIT_FAILURE;
+		}
+	}
+
 	int err = platform_init();
 	if (err) {
 		return EXIT_FAILURE;
 	}
-
-	Arguments args;
 
 	if (argc >= 2) {
 		args.cartridge_filename = std::string(argv[1]);
 	} else {
 		platform.wait_for_cartridge_file(args.cartridge_filename);
 	}
-
 	if (args.cartridge_filename.length() == 0) {
 		fprintf(stderr, "no cartridge file\n");
 		return EXIT_FAILURE;
@@ -95,6 +123,48 @@ int main(int argc, char **argv)
 	emulator_close();
 
 	return 0;
+}
+
+int find_bios_file(std::string &s)
+{
+	char *t;
+	std::string base_dir;
+
+#ifdef __unix__
+	t = std::getenv("XDG_DATA_HOME");
+	if (t) {
+		base_dir = std::string(t);
+	} else {
+		t = std::getenv("HOME");
+		if (t) {
+			base_dir = t + std::string("/.local/share");
+		} else {
+			return 1;
+		}
+	}
+#elif defined (_WIN64) || defined (_WIN32)
+	t = std::getenv("APPDATA");
+	if (t) {
+		base_dir = std::string(t);
+	} else {
+		return 1;
+	}
+#else
+	return 1;
+#endif
+	std::string data_dir = base_dir + "/" + prog_name;
+	std::filesystem::create_directory(data_dir);
+
+	std::string filename = data_dir + "/" + bios_filenames[0];
+	fprintf(stderr, "trying bios file %s\n", filename.c_str());
+	std::ifstream f(filename);
+
+	if (f.good()) {
+		s = filename;
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 #ifdef PLATFORM_USE_SDL2

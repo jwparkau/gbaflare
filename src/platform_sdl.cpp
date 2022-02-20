@@ -24,13 +24,13 @@ static void update_joypad(joypad_buttons button, bool down);
 int Platform::init()
 {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) < 0) {
-		printf("could not init SDL\n");
+		fprintf(stderr, "could not init SDL\n");
 		goto init_failed;
 	}
 
 	window = SDL_CreateWindow("GBAFlare", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width*scale_factor, height*scale_factor, SDL_WINDOW_SHOWN);
 	if (!window) {
-		printf("could not create window\n");
+		fprintf(stderr, "could not create window\n");
 		goto init_failed;
 	}
 
@@ -38,18 +38,18 @@ int Platform::init()
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (!renderer) {
-		printf("could not create renderer\n");
+		fprintf(stderr, "could not create renderer\n");
 		goto init_failed;
 	}
 
 	if (SDL_RenderSetLogicalSize(renderer, width, height) < 0) {
-		printf("could not set logical size\n");
+		fprintf(stderr, "could not set logical size\n");
 		goto init_failed;
 	}
 
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR555, SDL_TEXTUREACCESS_STREAMING, width, height);
 	if (!texture) {
-		printf("could not create texture\n");
+		fprintf(stderr, "could not create texture\n");
 		goto init_failed;
 	}
 
@@ -63,12 +63,12 @@ int Platform::init()
 
 	audio_device = SDL_OpenAudioDevice(nullptr, false, &audio_spec_want, &audio_spec_have, 0);
 	if (!audio_device) {
-		printf("could not init audio device\n");
+		fprintf(stderr, "could not init audio device\n");
 		goto init_failed;
 	}
 
-	printf("audio: got sample rate %d\n", audio_spec_have.freq);
-	printf("audio: got buffer size %d\n", audio_spec_have.samples);
+	fprintf(stderr, "audio: got sample rate %d\n", audio_spec_have.freq);
+	fprintf(stderr, "audio: got buffer size %d\n", audio_spec_have.samples);
 
 	SDL_PauseAudioDevice(audio_device, 0);
 

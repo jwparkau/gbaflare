@@ -233,7 +233,7 @@ extern u32 last_bios_opcode;
 extern bool prefetch_enabled;
 
 void request_interrupt(u16 flag);
-void load_bios_rom(const char *filename);
+void load_bios_rom(const std::string &filename);
 void load_cartridge_rom();
 void determine_save_type();
 void load_sram();

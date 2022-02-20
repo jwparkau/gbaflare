@@ -21,6 +21,7 @@ constexpr double FPS = 59.72750057;
 
 int platform_init();
 void platform_on_vblank();
+int find_bios_file(std::string &s);
 
 extern std::atomic_bool emulator_running;
 extern std::atomic_bool throttle_enabled;
@@ -37,6 +38,8 @@ extern std::mutex f_lock;
 extern s16 audiobuffer[AUDIOBUFFER_SIZE];
 extern s16 real_audiobuffer[AUDIOBUFFER_SIZE];
 extern std::atomic_uint32_t audio_buffer_index;
+
+extern const std::string prog_name;
 
 #ifdef PLATFORM_USE_SDL2
 #include "platform_sdl.h"

@@ -135,7 +135,7 @@ void load_cartridge_rom()
 	fprintf(stderr, "cartridge rom: read %ld bytes\n", bytes_read);
 }
 
-void load_bios_rom(const char *filename)
+void load_bios_rom(const std::string &filename)
 {
 	std::ifstream f(filename, std::ios_base::binary);
 
