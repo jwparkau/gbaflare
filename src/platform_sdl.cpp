@@ -129,11 +129,11 @@ void Platform::render(u16 *pixels)
 	SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
 	SDL_RenderClear(renderer);
 
-	SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	SDL_Rect r = {0, 0, width, height};
-	SDL_RenderFillRect(renderer, &r);
-
-	SDL_UpdateTexture(texture, NULL, pixels, width * sizeof *pixels);
+	int pitch;
+	u16 *p = NULL;
+	SDL_LockTexture(texture, NULL, (void **)&p, &pitch);
+	std::memcpy(p, pixels, width * height * sizeof *p);
+	SDL_UnlockTexture(texture);
 
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 
