@@ -57,13 +57,9 @@ int main(int argc, char **argv)
 {
 	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
 
-	if (argc != 2 && argc != 3) {
+	if (argc != 2) {
 		fprintf(stderr, "no cartridge file specified\n");
 		exit(EXIT_FAILURE);
-	}
-
-	if (argc == 3) {
-		debug = true;
 	}
 
 	int err = platform_init();

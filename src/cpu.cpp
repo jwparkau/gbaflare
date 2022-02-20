@@ -8,7 +8,6 @@
 #include <iostream>
 
 struct CPU cpu;
-bool debug = false;
 
 static const bool cond_lut[16][16] = {
 	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
@@ -149,26 +148,9 @@ void CPU::execute()
 void CPU::thumb_execute()
 {
 	u16 op = pipeline[0];
-
-#ifdef DEBUG
-	if (debug) {
-		dump_registers();
-		fprintf(stderr, "     %04X\n", op);
-	}
-#endif
-
 	ThumbInstruction *fp = thumb_lut[op >> 6];
 
-#ifdef DEBUG
-	if (fp) {
-		fp(op);
-	} else {
-		fprintf(stderr, "UNHANDLED THUMB %04X at %08X\n", op, pc - 4);
-		throw std::runtime_error("unhandled opcode in thumb mode");
-	}
-#else
 	fp(op);
-#endif
 }
 
 
@@ -184,13 +166,6 @@ void CPU::arm_execute()
 		last_bios_opcode = pipeline[2];
 	}
 
-#ifdef DEBUG
-	if (debug) {
-		dump_registers();
-		fprintf(stderr, " %08X\n", op);
-	}
-#endif
-
 	u32 op1 = op >> 20 & BITMASK(8);
 	u32 op2 = op >> 4 & BITMASK(4);
 
@@ -199,16 +174,7 @@ void CPU::arm_execute()
 	if (cond_triggered(cond)) {
 		u32 lut_offset = (op1 << 4) + op2;
 		ArmInstruction *fp = arm_lut[lut_offset];
-#ifdef DEBUG
-		if (fp) {
-			fp(op);
-		} else {
-			fprintf(stderr, "UNHANDLED %08X\n", op);
-			throw std::runtime_error("unhandled opcode");
-		}
-#else
 		fp(op);
-#endif
 	} else {
 		sfetch();
 	}

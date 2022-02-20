@@ -6,15 +6,21 @@ project(
 	LANGUAGES CXX
 )
 
-#include(CheckIPOSupported)
-#check_ipo_supported(RESULT supported OUTPUT error)
-#
-#if( supported )
-#    message(STATUS "IPO / LTO enabled")
-#    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-#else()
-#    message(STATUS "IPO / LTO not supported: <${error}>")
-#endif()
+if ( CMAKE_COMPILER_IS_GNUCC )
+	add_compile_options(-Wall -Wextra -Winline)
+endif()
+if ( MSVC )
+	add_compile_options(/W4)
+endif()
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT supported OUTPUT error)
+if( supported )
+    message(STATUS "IPO / LTO enabled")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "IPO / LTO not supported: <${error}>")
+endif()
 
 add_executable(gbaflare "")
 add_executable(gbaflare-release "")
