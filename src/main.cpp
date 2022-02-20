@@ -12,13 +12,13 @@
 #include "scheduler.h"
 #include "dma.h"
 
-void emulator_init(const std::string &cartridge_filename)
+void emulator_init(Arguments &args)
 {
 	set_initial_memory_state();
 
 	load_bios_rom("../boot/gba_bios.bin");
 
-	cartridge.filename = cartridge_filename;
+	cartridge.filename = args.cartridge_filename;
 	cartridge.save_file = cartridge.filename + ".flaresav";
 
 	load_cartridge_rom();

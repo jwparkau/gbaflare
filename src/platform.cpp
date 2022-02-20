@@ -63,19 +63,20 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	std::string cartridge_filename;
+	Arguments args;
+
 	if (argc >= 2) {
-		cartridge_filename = std::string(argv[1]);
+		args.cartridge_filename = std::string(argv[1]);
 	} else {
-		platform.wait_for_cartridge_file(cartridge_filename);
+		platform.wait_for_cartridge_file(args.cartridge_filename);
 	}
 
-	if (cartridge_filename.length() == 0) {
+	if (args.cartridge_filename.length() == 0) {
 		fprintf(stderr, "no cartridge file\n");
 		return EXIT_FAILURE;
 	}
 
-	emulator_init(cartridge_filename);
+	emulator_init(args);
 
 	std::thread emu_thread(main_loop);
 
