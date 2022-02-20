@@ -25,7 +25,7 @@ struct Platform {
 
 	const int width = 240;
 	const int height = 160;
-	const int scale_factor = 8;
+	const int scale_factor = 4;
 
 	int init();
 

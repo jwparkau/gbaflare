@@ -28,13 +28,13 @@ int Platform::init()
 		goto init_failed;
 	}
 
-	window = SDL_CreateWindow("GBAFlare", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width*scale_factor, height*scale_factor, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow("GBAFlare", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width*scale_factor, height*scale_factor, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	if (!window) {
 		fprintf(stderr, "could not create window\n");
 		goto init_failed;
 	}
 
-	SDL_SetWindowResizable(window, SDL_FALSE);
+	SDL_SetWindowResizable(window, SDL_TRUE);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (!renderer) {
