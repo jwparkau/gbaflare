@@ -299,6 +299,169 @@ template<typename T, int whence> void sram_area_write(addr_t addr, T data)
 	}
 }
 
+template<typename T, int whence> T mmio_read(addr_t addr)
+{
+	u32 x = 0;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+		u32 offset = addr - IO_START + i;
+
+		u32 value;
+		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
+			value = wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L];
+		} else {
+			value = io_data[offset];
+		}
+
+		switch (addr + i) {
+			case IO_TM0CNT_L:
+			case IO_TM0CNT_L+1:
+			case IO_TM1CNT_L:
+			case IO_TM1CNT_L+1:
+			case IO_TM2CNT_L:
+			case IO_TM2CNT_L+1:
+			case IO_TM3CNT_L:
+			case IO_TM3CNT_L+1:
+				value = timer.on_read(addr + i);
+				break;
+			case IO_KEYINPUT:
+				value = joypad_state & BITMASK(8);
+				break;
+			case IO_KEYINPUT+1:
+				value = joypad_state >> 8;
+				break;
+		}
+
+		x |= value << (i * 8);
+	}
+
+	return x;
+}
+
+template<typename T, int whence> void mmio_write(addr_t addr, T data)
+{
+	u32 x = data;
+
+	bool update_affine_ref = false;
+
+	for (std::size_t i = 0; i < sizeof(T); i++) {
+
+		u8 to_write = x & BITMASK(8);
+		u8 mask;
+
+		switch (addr + i) {
+			case IO_KEYINPUT:
+			case IO_KEYINPUT + 1:
+			case IO_VCOUNT:
+				mask = 0;
+				break;
+			case IO_DISPSTAT:
+				mask = 0xF8;
+				break;
+			case IO_IF:
+			case IO_IF + 1:
+				mask = to_write;
+				to_write = 0;
+				break;
+			case IO_SOUNDCNT_H + 1:
+				mask = 0x77;
+				break;
+			default:
+				mask = 0xFF;
+		}
+
+		u32 offset = addr - IO_START + i;
+
+		u8 old_value = io_data[offset];
+		u8 new_value = (old_value & ~mask) | (to_write & mask);
+
+		switch (addr + i) {
+			case IO_TM0CNT_H:
+			case IO_TM1CNT_H:
+			case IO_TM2CNT_H:
+			case IO_TM3CNT_H:
+				timer.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_DMA0CNT_H + 1:
+			case IO_DMA1CNT_H + 1:
+			case IO_DMA2CNT_H + 1:
+			case IO_DMA3CNT_H + 1:
+				dma.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_HALTCNT:
+				if (new_value == 0) {
+					cpu.halted = true;
+				}
+				break;
+			case IO_WAITCNT:
+				on_waitcntl_write(new_value);
+				break;
+			case IO_WAITCNT + 1:
+				on_waitcnth_write(new_value);
+				break;
+			case IO_SOUNDCNT_H + 1:
+				apu.on_write(addr + i, old_value, new_value);
+				break;
+			case IO_SOUND1CNT_X + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(1);
+				}
+				break;
+			case IO_SOUND2CNT_H + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(2);
+				}
+				break;
+			case IO_SOUND3CNT_X + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(3);
+				}
+				break;
+			case IO_SOUND4CNT_H + 1:
+				if (new_value & BIT(7)) {
+					psg_trigger_ch(4);
+				}
+				break;
+			case IO_SOUND1CNT_H:
+				psg_load_length_timer(1, new_value);
+				break;
+			case IO_SOUND2CNT_L:
+				psg_load_length_timer(2, new_value);
+				break;
+			case IO_SOUND3CNT_H:
+				psg_load_length_timer(3, new_value);
+				break;
+			case IO_SOUND4CNT_L:
+				psg_load_length_timer(4, new_value);
+				break;
+		}
+
+		switch (addr) {
+			case IO_FIFO_A_L:
+				fifos[0].enqueue8(new_value);
+				break;
+			case IO_FIFO_B_L:
+				fifos[1].enqueue8(new_value);
+				break;
+		}
+
+		if ((IO_BG2X_L <= addr + i && addr + 1 < IO_BG2Y_H + 2) || (IO_BG3X_L <= addr + i && addr + 1 < IO_BG3Y_H + 2)) {
+			update_affine_ref = true;
+		}
+
+		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
+			wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L] = new_value;
+		} else {
+			io_data[offset] = new_value;
+		}
+		x >>= 8;
+	}
+
+	if (update_affine_ref) {
+		ppu.copy_affine_ref();
+	}
+}
+
 template<typename T, int whence, int type> T read(addr_t addr)
 {
 	T ret = BITMASK(sizeof(T) * 8);
@@ -505,169 +668,6 @@ write_end:
 
 	if (prefetch_enabled && region != MemoryRegion::CARTRIDGE && type != NOCYCLES && type != FROM_FETCH) {
 		prefetch.step(old);
-	}
-}
-
-template<typename T, int whence> T mmio_read(addr_t addr)
-{
-	u32 x = 0;
-
-	for (std::size_t i = 0; i < sizeof(T); i++) {
-		u32 offset = addr - IO_START + i;
-
-		u32 value;
-		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
-			value = wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L];
-		} else {
-			value = io_data[offset];
-		}
-
-		switch (addr + i) {
-			case IO_TM0CNT_L:
-			case IO_TM0CNT_L+1:
-			case IO_TM1CNT_L:
-			case IO_TM1CNT_L+1:
-			case IO_TM2CNT_L:
-			case IO_TM2CNT_L+1:
-			case IO_TM3CNT_L:
-			case IO_TM3CNT_L+1:
-				value = timer.on_read(addr + i);
-				break;
-			case IO_KEYINPUT:
-				value = joypad_state & BITMASK(8);
-				break;
-			case IO_KEYINPUT+1:
-				value = joypad_state >> 8;
-				break;
-		}
-
-		x |= value << (i * 8);
-	}
-
-	return x;
-}
-
-template<typename T, int whence> void mmio_write(addr_t addr, T data)
-{
-	u32 x = data;
-
-	bool update_affine_ref = false;
-
-	for (std::size_t i = 0; i < sizeof(T); i++) {
-
-		u8 to_write = x & BITMASK(8);
-		u8 mask;
-
-		switch (addr + i) {
-			case IO_KEYINPUT:
-			case IO_KEYINPUT + 1:
-			case IO_VCOUNT:
-				mask = 0;
-				break;
-			case IO_DISPSTAT:
-				mask = 0xF8;
-				break;
-			case IO_IF:
-			case IO_IF + 1:
-				mask = to_write;
-				to_write = 0;
-				break;
-			case IO_SOUNDCNT_H + 1:
-				mask = 0x77;
-				break;
-			default:
-				mask = 0xFF;
-		}
-
-		u32 offset = addr - IO_START + i;
-
-		u8 old_value = io_data[offset];
-		u8 new_value = (old_value & ~mask) | (to_write & mask);
-
-		switch (addr + i) {
-			case IO_TM0CNT_H:
-			case IO_TM1CNT_H:
-			case IO_TM2CNT_H:
-			case IO_TM3CNT_H:
-				timer.on_write(addr + i, old_value, new_value);
-				break;
-			case IO_DMA0CNT_H + 1:
-			case IO_DMA1CNT_H + 1:
-			case IO_DMA2CNT_H + 1:
-			case IO_DMA3CNT_H + 1:
-				dma.on_write(addr + i, old_value, new_value);
-				break;
-			case IO_HALTCNT:
-				if (new_value == 0) {
-					cpu.halted = true;
-				}
-				break;
-			case IO_WAITCNT:
-				on_waitcntl_write(new_value);
-				break;
-			case IO_WAITCNT + 1:
-				on_waitcnth_write(new_value);
-				break;
-			case IO_SOUNDCNT_H + 1:
-				apu.on_write(addr + i, old_value, new_value);
-				break;
-			case IO_SOUND1CNT_X + 1:
-				if (new_value & BIT(7)) {
-					psg_trigger_ch(1);
-				}
-				break;
-			case IO_SOUND2CNT_H + 1:
-				if (new_value & BIT(7)) {
-					psg_trigger_ch(2);
-				}
-				break;
-			case IO_SOUND3CNT_X + 1:
-				if (new_value & BIT(7)) {
-					psg_trigger_ch(3);
-				}
-				break;
-			case IO_SOUND4CNT_H + 1:
-				if (new_value & BIT(7)) {
-					psg_trigger_ch(4);
-				}
-				break;
-			case IO_SOUND1CNT_H:
-				psg_load_length_timer(1, new_value);
-				break;
-			case IO_SOUND2CNT_L:
-				psg_load_length_timer(2, new_value);
-				break;
-			case IO_SOUND3CNT_H:
-				psg_load_length_timer(3, new_value);
-				break;
-			case IO_SOUND4CNT_L:
-				psg_load_length_timer(4, new_value);
-				break;
-		}
-
-		switch (addr) {
-			case IO_FIFO_A_L:
-				fifos[0].enqueue8(new_value);
-				break;
-			case IO_FIFO_B_L:
-				fifos[1].enqueue8(new_value);
-				break;
-		}
-
-		if ((IO_BG2X_L <= addr + i && addr + 1 < IO_BG2Y_H + 2) || (IO_BG3X_L <= addr + i && addr + 1 < IO_BG3Y_H + 2)) {
-			update_affine_ref = true;
-		}
-
-		if (IO_WAVERAM0_L <= addr + i && addr + i < IO_WAVERAM0_L + 16) {
-			wave_ram[WAVE_BANK() ^ 1][addr + i - IO_WAVERAM0_L] = new_value;
-		} else {
-			io_data[offset] = new_value;
-		}
-		x >>= 8;
-	}
-
-	if (update_affine_ref) {
-		ppu.copy_affine_ref();
 	}
 }
 
