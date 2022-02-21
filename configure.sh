@@ -13,4 +13,4 @@ else
 	exit 1
 fi
 
-cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release -DUSE_"$platform"=1 ..
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Release -DUSE_"$platform"=1 -DSINGLE_SOURCE=0 ..

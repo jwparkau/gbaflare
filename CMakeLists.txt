@@ -9,9 +9,6 @@ project(
 if ( CMAKE_COMPILER_IS_GNUCC )
 	add_compile_options(-Wall -Wextra -Winline)
 endif()
-if ( MSVC )
-	add_compile_options(/W4)
-endif()
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT supported OUTPUT error)
@@ -22,8 +19,38 @@ else()
     message(STATUS "IPO / LTO not supported: <${error}>")
 endif()
 
+set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD_REQUIRED YES)
+set (CMAKE_CXX_EXTENSIONS NO)
+
 add_executable(gbaflare "")
-add_executable(gbaflare-release "")
+
+if (SINGLE_SOURCE)
+	target_sources(gbaflare
+		PUBLIC
+		src/release.cpp)
+else()
+	target_sources(gbaflare
+		PUBLIC
+		src/apu.cpp
+		src/arm.cpp
+		src/channel.cpp
+		src/cpu.cpp
+		src/dma.cpp
+		src/flash.cpp
+		src/main.cpp
+		src/memory.cpp
+		src/ops.cpp
+		src/platform.cpp
+		src/ppu.cpp
+		src/scheduler.cpp
+		src/thumb.cpp
+		src/timer.cpp
+		src/types.cpp
+	)
+endif()
+
+target_include_directories(gbaflare PUBLIC src)
 
 if (USE_SDL2)
 	message(STATUS "Using SDL2")
@@ -31,11 +58,7 @@ if (USE_SDL2)
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
-	target_link_libraries(gbaflare-release ${SDL2_LIBRARIES})
 endif()
 
 find_package(Threads REQUIRED)
 target_link_libraries(gbaflare Threads::Threads)
-target_link_libraries(gbaflare-release Threads::Threads)
-
-add_subdirectory(src)
