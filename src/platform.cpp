@@ -46,10 +46,8 @@ void platform_on_vblank()
 	static std::chrono::duration<double> frame_duration(1.0 / FPS);
 
 	frame_rendered.acquire();
-	f_lock.lock();
 	std::memcpy(real_framebuffer, framebuffer, FRAMEBUFFER_SIZE * sizeof(*framebuffer));
 	std::memcpy(real_audiobuffer, audiobuffer, AUDIOBUFFER_SIZE * sizeof(*audiobuffer));
-	f_lock.unlock();
 	frame_drawn.release();
 
 	std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
@@ -110,11 +108,9 @@ int main(int argc, char **argv)
 
 	while (emulator_running) {
 		frame_drawn.acquire();
-		f_lock.lock();
 		platform.render(real_framebuffer);
 		platform.queue_audio();
 		platform.handle_input();
-		f_lock.unlock();
 		frame_rendered.release();
 	}
 
