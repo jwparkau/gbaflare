@@ -58,8 +58,8 @@ void main_loop()
 
 		start_event_processing();
 
-		timer.step();
 		ppu.step();
+		timer.step();
 		apu.channel_step();
 		apu.step();
 

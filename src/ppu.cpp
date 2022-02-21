@@ -38,6 +38,11 @@ void PPU::step()
 {
 	cycles += elapsed;
 
+	if (cycles < 960) {
+		schedule_after(960 - cycles);
+		return;
+	}
+
 	bool next_line = false;
 
 	if (cycles >= 1232) {
