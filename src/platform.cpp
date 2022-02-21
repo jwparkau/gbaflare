@@ -100,6 +100,8 @@ int main(int argc, char **argv)
 	if (args.cartridge_filename.length() == 0) {
 		fprintf(stderr, "no cartridge file\n");
 		return EXIT_FAILURE;
+	} else {
+		fprintf(stderr, "using cartridge file %s\n", args.cartridge_filename.c_str());
 	}
 
 	emulator_init(args);

@@ -152,6 +152,7 @@ void Platform::queue_audio()
 
 void Platform::wait_for_cartridge_file(std::string &s)
 {
+	fprintf(stderr, "drag and drop in a .gba file\n");
 	while (s.length() == 0) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
@@ -161,9 +162,14 @@ void Platform::wait_for_cartridge_file(std::string &s)
 
 			if (e.type == SDL_DROPFILE) {
 				char *filename = e.drop.file;
-				s = std::string(filename);
+				std::string temp = std::string(filename);
 				SDL_free(filename);
-				return;
+				if (temp.ends_with(".gba")) {
+					s = temp;
+					return;
+				} else {
+					fprintf(stderr, "cartridge file should end with .gba\n");
+				}
 			}
 		}
 
