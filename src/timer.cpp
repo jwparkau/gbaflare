@@ -35,18 +35,13 @@ void Timer::simulate_elapsed(u64 dt)
 		tcycles[i] += dt;
 		u32 freq = timer_freq[tmcnt & TIMER_PRESCALE];
 
-		bool value_changed = false;
-
 		while (tcycles[i] >= freq) {
 			tcycles[i] -= freq;
 
 			do_timer_increment(i);
-			value_changed = true;
 		}
 
-		if (value_changed) {
-			schedule_after((0x10000 - values[i]) * freq - tcycles[i]);
-		}
+		schedule_after((0x10000 - values[i]) * freq - tcycles[i]);
 	}
 }
 
