@@ -20,6 +20,7 @@ const char *bios_filenames[] = {
 const std::string prog_name = "gbaflare";
 
 std::atomic_bool emulator_running;
+std::atomic_bool emulator_paused;
 std::atomic_bool throttle_enabled = true;
 std::atomic_bool print_fps;
 std::atomic_uint16_t joypad_state = 0xFFFF;
@@ -59,6 +60,8 @@ void platform_on_vblank()
 		while (std::chrono::steady_clock::now() - tick_start < frame_duration)
 			;
 	}
+
+	emulator_paused.wait(true);
 
 	tick_start = std::chrono::steady_clock::now();
 }
@@ -109,13 +112,18 @@ int main(int argc, char **argv)
 	std::thread emu_thread(main_loop);
 
 	while (emulator_running) {
-		frame_drawn.acquire();
-		platform.render(real_framebuffer);
-		platform.queue_audio();
-		platform.handle_input();
-		frame_rendered.release();
+		if (frame_drawn.try_acquire()) {
+			platform.render(real_framebuffer);
+			platform.queue_audio();
+			platform.handle_input();
+			frame_rendered.release();
+		} else {
+			platform.handle_input();
+		}
 	}
 
+	emulator_paused = false;
+	emulator_paused.notify_one();
 	emu_thread.join();
 
 	emulator_close();

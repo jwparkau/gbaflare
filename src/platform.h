@@ -24,6 +24,7 @@ void platform_on_vblank();
 int find_bios_file(std::string &s);
 
 extern std::atomic_bool emulator_running;
+extern std::atomic_bool emulator_paused;
 extern std::atomic_bool throttle_enabled;
 extern std::atomic_bool print_fps;
 

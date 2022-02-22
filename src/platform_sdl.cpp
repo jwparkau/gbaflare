@@ -186,6 +186,8 @@ void Platform::handle_input()
 {
 	SDL_Event e;
 
+	bool toggle_audio = false;
+
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) {
 			emulator_running = false;
@@ -194,15 +196,15 @@ void Platform::handle_input()
 
 		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_0) {
 			throttle_enabled = !throttle_enabled;
-			if (!throttle_enabled) {
-				SDL_PauseAudioDevice(audio_device, 1);
-			} else {
-				SDL_PauseAudioDevice(audio_device, 0);
-				SDL_ClearQueuedAudio(audio_device);
-				audio_buffer_index = 0;
-			}
+			toggle_audio = true;
 		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_p) {
 			print_fps = !print_fps;
+		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_ESCAPE) {
+			emulator_paused = !emulator_paused;
+			toggle_audio = true;
+			if (!emulator_paused) {
+				emulator_paused.notify_one();
+			}
 		}
 
 		switch (e.type) {
@@ -221,6 +223,16 @@ void Platform::handle_input()
 				remove_controller();
 				break;
 
+		}
+	}
+
+	if (toggle_audio) {
+		if (throttle_enabled && !emulator_paused) {
+			SDL_PauseAudioDevice(audio_device, 0);
+			SDL_ClearQueuedAudio(audio_device);
+			audio_buffer_index = 0;
+		} else {
+			SDL_PauseAudioDevice(audio_device, 1);
 		}
 	}
 }
