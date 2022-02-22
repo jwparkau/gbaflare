@@ -7,8 +7,7 @@
 const int psg_volume_div[4] = {4, 2, 1, 1};
 const int wave_volume_factor[4] = {0, 4, 2, 1};
 
-FIFO fifos[2];
-
+FIFO fifos[NUM_FIFOS];
 APU apu;
 
 void FIFO::reset()
@@ -63,7 +62,7 @@ void APU::step()
 		u16 soundcnt_x = io_read<u16>(IO_SOUNDCNT_X);
 		u16 soundcnt_h = io_read<u16>(IO_SOUNDCNT_H);
 		if (soundcnt_x & SOUND_MASTER_ENABLE) {
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < NUM_FIFOS; i++) {
 				int v = fifo_v[i] * 4;
 				if (soundcnt_h & (DMA_A_VOL * BIT(i))) {
 					v /= 2;
@@ -78,7 +77,7 @@ void APU::step()
 				}
 			}
 
-			for (int ch = 1; ch <= 4; ch++) {
+			for (int ch = 1; ch <= NUM_PSG_CHANNELS; ch++) {
 				if (channel_states[ch-1].enabled) {
 					int v = get_psg_value(ch) * 16;
 					v = v / psg_volume_div[soundcnt_h & PSG_VOL];

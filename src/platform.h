@@ -18,29 +18,32 @@
 #define AUDIOBUFFER_SIZE SAMPLES_PER_FRAME * 2
 
 constexpr double FPS = 59.72750057;
+extern const std::string prog_name;
 
 int platform_init();
 void platform_on_vblank();
 int find_bios_file(std::string &s);
 
-extern std::atomic_bool emulator_running;
-extern std::atomic_bool emulator_paused;
-extern std::atomic_bool throttle_enabled;
-extern std::atomic_bool print_fps;
+struct EmulatorControl {
+	std::atomic_bool emulator_running{};
+	std::atomic_bool emulator_paused{};
+	std::atomic_bool throttle_enabled = true;
+	std::atomic_bool print_fps{};
+	std::atomic_int save_state{};
+	std::atomic_int load_state{};
+	std::atomic_uint16_t joypad_state = 0xFFFF;
+	std::atomic_bool do_reset{};
+};
 
-extern std::atomic_uint16_t joypad_state;
-
-extern u16 framebuffer[FRAMEBUFFER_SIZE];
-extern u16 real_framebuffer[FRAMEBUFFER_SIZE];
+extern EmulatorControl emu_cnt;
 
 extern std::binary_semaphore frame_rendered, frame_drawn;
 extern std::mutex f_lock;
-
+extern u16 framebuffer[FRAMEBUFFER_SIZE];
+extern u16 real_framebuffer[FRAMEBUFFER_SIZE];
 extern s16 audiobuffer[AUDIOBUFFER_SIZE];
 extern s16 real_audiobuffer[AUDIOBUFFER_SIZE];
 extern std::atomic_uint32_t audio_buffer_index;
-
-extern const std::string prog_name;
 
 #ifdef PLATFORM_USE_SDL2
 #include "platform_sdl.h"

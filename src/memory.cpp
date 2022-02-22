@@ -6,25 +6,6 @@
 #include <fstream>
 #include <regex>
 
-Cartridge cartridge;
-
-u8 bios_data[BIOS_SIZE];
-u8 ewram_data[EWRAM_SIZE];
-u8 iwram_data[IWRAM_SIZE];
-u8 io_data[IO_SIZE];
-u8 palette_data[PALETTE_RAM_SIZE];
-u8 vram_data[VRAM_SIZE];
-u8 oam_data[OAM_SIZE];
-u8 cartridge_data[CARTRIDGE_SIZE];
-u8 sram_data[SRAM_SIZE];
-
-u8 wave_ram[2][16];
-
-u32 last_bios_opcode;
-
-bool prefetch_enabled;
-Prefetch prefetch;
-
 u8 *const region_to_data[NUM_REGIONS] = {
 	nullptr,
 	bios_data,
@@ -83,6 +64,20 @@ const u32 region_to_offset_mask[NUM_REGIONS] = {
 	0xFFFF
 };
 
+Cartridge cartridge;
+Prefetch prefetch;
+
+u8 bios_data[BIOS_SIZE];
+u8 ewram_data[EWRAM_SIZE];
+u8 iwram_data[IWRAM_SIZE];
+u8 io_data[IO_SIZE];
+u8 palette_data[PALETTE_RAM_SIZE];
+u8 vram_data[VRAM_SIZE];
+u8 oam_data[OAM_SIZE];
+u8 cartridge_data[CARTRIDGE_SIZE];
+u8 sram_data[SRAM_SIZE];
+u8 wave_ram[2][16];
+
 u8 waitstate_cycles[NUM_REGIONS][3] = {
 	{1, 1, 1},
 	{1, 1, 1},
@@ -96,6 +91,10 @@ u8 waitstate_cycles[NUM_REGIONS][3] = {
 	{5, 5, 5}
 };
 u8 cartridge_cycles[3][2][3];
+
+u32 last_bios_opcode;
+bool prefetch_enabled;
+
 
 void request_interrupt(u16 flag)
 {

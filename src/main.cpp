@@ -3,20 +3,11 @@
 #include <iostream>
 #include <memory>
 
-#include "types.h"
-#include "cpu.h"
-#include "ppu.h"
-#include "memory.h"
-#include "platform.h"
-#include "timer.h"
-#include "scheduler.h"
-#include "dma.h"
+Arguments args;
 
 void emulator_init(Arguments &args)
 {
 	set_initial_memory_state();
-
-	load_bios_rom(args.bios_filename);
 
 	cartridge.filename = args.cartridge_filename;
 	cartridge.save_file = cartridge.filename + ".flaresav";
@@ -33,18 +24,18 @@ void emulator_init(Arguments &args)
 			load_flash();
 			break;
 	}
-}
 
-void main_loop()
-{
 	cpu.flush_pipeline();
 	cpu.sfetch();
 
 	next_event = CYCLES_PER_SAMPLE;
 	cpu_cycles = 0;
+}
 
+void main_loop()
+{
 	for (;;) {
-		if (!emulator_running) {
+		if (!emu_cnt.emulator_running) {
 			break;
 		}
 
@@ -78,4 +69,52 @@ void emulator_close()
 			save_flash();
 			break;
 	}
+}
+
+#define RESET_ARR(a, n)\
+	for (int i = 0; i < (n); i++) {\
+		a[i] = {};\
+	}
+
+#define ZERO_ARR(a) std::memset(a, 0, sizeof(a))
+
+void emulator_reset()
+{
+	apu = {};
+	RESET_ARR(fifos, 2);
+	RESET_ARR(channel_states, NUM_PSG_CHANNELS);
+	sweep_state = {};
+	noise_state = {};
+	wave_state = {};
+	cpu = {};
+	dma = {};
+	flash = {};
+	prefetch = {};
+	ZERO_ARR(ewram_data);
+	ZERO_ARR(iwram_data);
+	ZERO_ARR(io_data);
+	ZERO_ARR(palette_data);
+	ZERO_ARR(vram_data);
+	ZERO_ARR(oam_data);
+	ZERO_ARR(wave_ram);
+	last_bios_opcode = 0;
+	prefetch_enabled = 0;
+	ppu = {};
+	next_event = 0;
+	elapsed = 0;
+	scheduler_flag = false;
+	cpu_cycles = 0;
+	timer = {};
+
+	emulator_init(args);
+}
+
+void emulator_save_state(int n)
+{
+
+}
+
+void emulator_load_state(int n)
+{
+
 }

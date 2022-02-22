@@ -194,8 +194,6 @@ struct Cartridge {
 	std::string save_file;
 };
 
-extern Cartridge cartridge;
-
 struct Prefetch {
 	addr_t start{};
 	addr_t current{};
@@ -207,6 +205,12 @@ struct Prefetch {
 	void init(addr_t addr);
 };
 
+extern u8 *const region_to_data[NUM_REGIONS];
+extern u8 *const region_to_data_write[NUM_REGIONS];
+extern const int addr_to_region[16];
+extern const u32 region_to_offset_mask[NUM_REGIONS];
+
+extern Cartridge cartridge;
 extern Prefetch prefetch;
 
 extern u8 bios_data[BIOS_SIZE];
@@ -218,18 +222,12 @@ extern u8 vram_data[VRAM_SIZE];
 extern u8 oam_data[OAM_SIZE];
 extern u8 cartridge_data[CARTRIDGE_SIZE];
 extern u8 sram_data[SRAM_SIZE];
-
 extern u8 wave_ram[2][16];
-
-extern u8 *const region_to_data[NUM_REGIONS];
-extern u8 *const region_to_data_write[NUM_REGIONS];
-extern const int addr_to_region[16];
-extern const u32 region_to_offset_mask[NUM_REGIONS];
 
 extern u8 waitstate_cycles[NUM_REGIONS][3];
 extern u8 cartridge_cycles[3][2][3];
-extern u32 last_bios_opcode;
 
+extern u32 last_bios_opcode;
 extern bool prefetch_enabled;
 
 void request_interrupt(u16 flag);
@@ -323,12 +321,6 @@ template<typename T, int whence> T mmio_read(addr_t addr)
 			case IO_TM3CNT_L:
 			case IO_TM3CNT_L+1:
 				value = timer.on_read(addr + i);
-				break;
-			case IO_KEYINPUT:
-				value = joypad_state & BITMASK(8);
-				break;
-			case IO_KEYINPUT+1:
-				value = joypad_state >> 8;
 				break;
 		}
 

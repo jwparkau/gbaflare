@@ -73,7 +73,7 @@ int Platform::init()
 	SDL_PauseAudioDevice(audio_device, 0);
 
 	render(real_framebuffer);
-	emulator_running = true;
+	emu_cnt.emulator_running = true;
 	return PLATFORM_INIT_SUCCESS;
 
 init_failed:
@@ -190,20 +190,35 @@ void Platform::handle_input()
 
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) {
-			emulator_running = false;
+			emu_cnt.emulator_running = false;
 			break;
 		}
 
-		if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_0) {
-			throttle_enabled = !throttle_enabled;
-			toggle_audio = true;
-		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_p) {
-			print_fps = !print_fps;
-		} else if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_ESCAPE) {
-			emulator_paused = !emulator_paused;
-			toggle_audio = true;
-			if (!emulator_paused) {
-				emulator_paused.notify_one();
+		if (e.type == SDL_KEYUP) {
+			switch (e.key.keysym.sym) {
+				case SDLK_0:
+					emu_cnt.throttle_enabled = !emu_cnt.throttle_enabled;
+					toggle_audio = true;
+					break;
+				case SDLK_p:
+					emu_cnt.print_fps = !emu_cnt.print_fps;
+					break;
+				case SDLK_ESCAPE:
+					emu_cnt.emulator_paused = !emu_cnt.emulator_paused;
+					toggle_audio = true;
+					if (!emu_cnt.emulator_paused) {
+						emu_cnt.emulator_paused.notify_one();
+					}
+					break;
+				case SDLK_F1:
+					emu_cnt.save_state = 1;
+					break;
+				case SDLK_F2:
+					emu_cnt.load_state = 1;
+					break;
+				case SDLK_F5:
+					emu_cnt.do_reset = true;
+					break;
 			}
 		}
 
@@ -227,7 +242,7 @@ void Platform::handle_input()
 	}
 
 	if (toggle_audio) {
-		if (throttle_enabled && !emulator_paused) {
+		if (emu_cnt.throttle_enabled && !emu_cnt.emulator_paused) {
 			SDL_PauseAudioDevice(audio_device, 0);
 			SDL_ClearQueuedAudio(audio_device);
 			audio_buffer_index = 0;
@@ -241,9 +256,9 @@ static void update_joypad(joypad_buttons button, bool down)
 {
 	if (button != NOT_MAPPED) {
 		if (down) {
-			joypad_state &= ~BIT(button);
+			emu_cnt.joypad_state &= ~BIT(button);
 		} else {
-			joypad_state |= BIT(button);
+			emu_cnt.joypad_state |= BIT(button);
 		}
 	}
 }

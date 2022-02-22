@@ -16,15 +16,9 @@ const char *bios_filenames[] = {
 	nullptr
 };
 
-
 const std::string prog_name = "gbaflare";
 
-std::atomic_bool emulator_running;
-std::atomic_bool emulator_paused;
-std::atomic_bool throttle_enabled = true;
-std::atomic_bool print_fps;
-std::atomic_uint16_t joypad_state = 0xFFFF;
-
+EmulatorControl emu_cnt;
 Platform platform;
 
 u16 framebuffer[FRAMEBUFFER_SIZE];
@@ -52,25 +46,40 @@ void platform_on_vblank()
 	frame_drawn.release();
 
 	std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
-	if (print_fps) {
+	if (emu_cnt.print_fps) {
 		fprintf(stderr, "fps: %f\n", 1 / sec.count());
 	}
 
-	if (throttle_enabled) {
+	if (emu_cnt.throttle_enabled) {
 		while (std::chrono::steady_clock::now() - tick_start < frame_duration)
 			;
 	}
 
-	emulator_paused.wait(true);
+	if (emu_cnt.save_state) {
+		emulator_save_state(emu_cnt.save_state);
+		emu_cnt.save_state = 0;
+	}
+
+	if (emu_cnt.load_state) {
+		emulator_load_state(emu_cnt.load_state);
+		emu_cnt.load_state = 0;
+	}
+
+	if (emu_cnt.do_reset) {
+		emulator_reset();
+		emu_cnt.do_reset = false;
+	}
+
+	emu_cnt.emulator_paused.wait(true);
 
 	tick_start = std::chrono::steady_clock::now();
+
+	io_write<u16>(IO_KEYINPUT, emu_cnt.joypad_state);
 }
 
 int main(int argc, char **argv)
 {
 	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
-
-	Arguments args;
 
 	const char **fn;
 	for (fn = bios_filenames; *fn; fn++) {
@@ -89,6 +98,8 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+
+	load_bios_rom(args.bios_filename);
 
 	int err = platform_init();
 	if (err) {
@@ -111,7 +122,7 @@ int main(int argc, char **argv)
 
 	std::thread emu_thread(main_loop);
 
-	while (emulator_running) {
+	while (emu_cnt.emulator_running) {
 		if (frame_drawn.try_acquire()) {
 			platform.render(real_framebuffer);
 			platform.queue_audio();
@@ -122,8 +133,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	emulator_paused = false;
-	emulator_paused.notify_one();
+	emu_cnt.emulator_paused = false;
+	emu_cnt.emulator_paused.notify_one();
 	emu_thread.join();
 
 	emulator_close();

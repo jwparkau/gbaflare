@@ -66,8 +66,6 @@ struct ChannelState {
 	int length_timer{};
 };
 
-extern ChannelState channel_states[NUM_PSG_CHANNELS];
-
 struct SweepState {
 	bool sweep_enabled{};
 	int shadow_freq{};
@@ -79,20 +77,14 @@ struct SweepState {
 
 };
 
-extern SweepState sweep_state;
-
 struct NoiseState {
 	u16 LFSR{};
 
 };
 
-extern NoiseState noise_state;
-
 struct WaveState {
 	int current_bank{};
 };
-
-extern WaveState wave_state;
 
 int get_psg_value(int ch);
 void step_psg(int ch);
@@ -100,5 +92,10 @@ void psg_clock_length(int ch);
 void psg_clock_envelope(int ch);
 void psg_trigger_ch(int ch);
 void psg_load_length_timer(int ch, u8 new_value);
+
+extern ChannelState channel_states[NUM_PSG_CHANNELS];
+extern SweepState sweep_state;
+extern NoiseState noise_state;
+extern WaveState wave_state;
 
 #endif

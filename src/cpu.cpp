@@ -7,8 +7,6 @@
 #include <stdexcept>
 #include <iostream>
 
-struct CPU cpu;
-
 static const bool cond_lut[16][16] = {
 	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
 	{1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
@@ -27,6 +25,8 @@ static const bool cond_lut[16][16] = {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 };
+
+struct CPU cpu;
 
 void CPU::reset()
 {

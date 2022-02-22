@@ -51,7 +51,7 @@ struct CPU {
 
 	bool halted{};
 
-	cpu_mode_t cpu_mode = SYSTEM;
+	cpu_mode_t cpu_mode{};
 
 	// functions
 	void reset();

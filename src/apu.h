@@ -7,6 +7,7 @@
 
 #define FIFO_A 0
 #define FIFO_B 1
+#define NUM_FIFOS 2
 
 #define CYCLES_PER_FS_TICK 32768
 
@@ -58,14 +59,13 @@ struct FIFO {
 	void step();
 };
 
-extern FIFO fifos[2];
 
 struct APU {
 	u32 channel_cycles{};
 	u32 sample_cycles{};
 	u32 frameseq_cycles{};
 	u32 frame_sequencer{};
-	s8 fifo_v[2]{};
+	s8 fifo_v[NUM_FIFOS]{};
 
 	void reset();
 	void channel_step();
@@ -78,6 +78,7 @@ struct APU {
 	void clock_envelope();
 };
 
+extern FIFO fifos[NUM_FIFOS];
 extern APU apu;
 
 #endif

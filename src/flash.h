@@ -27,10 +27,10 @@ struct Flash {
 	void erase_all();
 };
 
-extern Flash flash;
-
 void load_flash();
 void save_flash();
+
+extern Flash flash;
 
 template<typename T, int flash_size> T flash_read(addr_t addr)
 {
