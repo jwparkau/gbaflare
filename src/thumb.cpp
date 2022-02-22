@@ -6,8 +6,6 @@
 #include <bit>
 #include <iostream>
 
-constexpr static thumb_lut_t thumb_init_lut();
-constexpr static ThumbInstruction *thumb_decode_op(u32 op);
 void thumb_branch_cond(u16 op);
 template <u32 h> void thumb_branch(u16 op);
 template <u32 shift_type> void thumb_shift_reg(u16 op);

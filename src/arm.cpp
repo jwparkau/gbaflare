@@ -7,10 +7,6 @@
 #include <stdexcept>
 #include <bit>
 
-constexpr static arm_lut_t arm_init_lut();
-constexpr static ArmInstruction *arm_decode_op(u32 op);
-constexpr static bool arm_is_alu_op(u32 op);
-constexpr static bool arm_is_mul_op(u32 op);
 template <u32 link> void arm_branch(u32 op);
 void arm_bx(u32 op);
 template <u32 is_imm, u32 aluop, u32 set_cond, u32 shift_type, u32 shift_by_reg> void arm_alu(u32 op);

@@ -6,7 +6,7 @@ project(
 	LANGUAGES CXX
 )
 
-if ( CMAKE_COMPILER_IS_GNUCC )
+if ( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
 	add_compile_options(-Wall -Wextra -Winline)
 endif()
 
@@ -17,6 +17,13 @@ if( supported )
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 else()
     message(STATUS "IPO / LTO not supported: <${error}>")
+endif()
+
+if (USE_SDL2)
+	message(STATUS "Using SDL2")
+	add_compile_definitions(PLATFORM_USE_SDL2)
+	find_package(SDL2 REQUIRED)
+	include_directories(${SDL2_INCLUDE_DIRS})
 endif()
 
 set (CMAKE_CXX_STANDARD 20)
@@ -53,10 +60,6 @@ endif()
 target_include_directories(gbaflare PUBLIC src)
 
 if (USE_SDL2)
-	message(STATUS "Using SDL2")
-	add_compile_definitions(PLATFORM_USE_SDL2)
-	find_package(SDL2 REQUIRED)
-	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
 endif()
 
