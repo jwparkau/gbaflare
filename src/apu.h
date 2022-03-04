@@ -49,7 +49,7 @@ struct FIFO {
 	int start{};
 	int end{};
 	int size{};
-	u8 buffer[FIFO_SIZE];
+	u8 buffer[FIFO_SIZE]{};
 
 	void reset();
 	void enqueue8(u8 x);
