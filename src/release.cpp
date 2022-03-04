@@ -1,6 +1,6 @@
 #include "arm.cpp"
 #include "cpu.cpp"
-#include "main.cpp"
+#include "emulator.cpp"
 #include "memory.cpp"
 #include "ops.cpp"
 #include "platform.cpp"

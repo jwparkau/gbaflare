@@ -1,5 +1,5 @@
-#ifndef GBAFLARE_MAIN_H
-#define GBAFLARE_MAIN_H
+#ifndef GBAFLARE_EMULATOR_H
+#define GBAFLARE_EMULATOR_H
 
 #include "types.h"
 #include "apu.h"

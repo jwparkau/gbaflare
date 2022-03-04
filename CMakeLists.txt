@@ -45,7 +45,7 @@ else()
 		src/cpu.cpp
 		src/dma.cpp
 		src/flash.cpp
-		src/main.cpp
+		src/emulator.cpp
 		src/memory.cpp
 		src/ops.cpp
 		src/platform.cpp

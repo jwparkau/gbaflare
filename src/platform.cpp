@@ -1,6 +1,6 @@
 #include "platform.h"
 #include "memory.h"
-#include "main.h"
+#include "emulator.h"
 
 #include <string>
 #include <stdexcept>

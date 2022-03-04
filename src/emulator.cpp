@@ -1,4 +1,4 @@
-#include "main.h"
+#include "emulator.h"
 
 #include <iostream>
 #include <memory>
