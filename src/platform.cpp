@@ -66,7 +66,7 @@ void platform_on_vblank()
 	}
 
 	if (emu_cnt.do_reset) {
-		emulator_reset();
+		emu.reset();
 		emu_cnt.do_reset = false;
 	}
 
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "using cartridge file %s\n", args.cartridge_filename.c_str());
 	}
 
-	emulator_init(args);
+	emu.init(args);
 
 	std::thread emu_thread(main_loop);
 
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 	emu_cnt.emulator_paused.notify_one();
 	emu_thread.join();
 
-	emulator_close();
+	emu.close();
 
 	return 0;
 }

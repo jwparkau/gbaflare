@@ -4,8 +4,17 @@
 #include <memory>
 
 Arguments args;
+Emulator emu;
 
-void emulator_init(Arguments &args)
+void main_loop()
+{
+	while (emu_cnt.emulator_running) {
+		emu.run_one_frame();
+		platform_on_vblank();
+	}
+}
+
+void Emulator::init(Arguments &args)
 {
 	set_initial_memory_state();
 
@@ -32,13 +41,9 @@ void emulator_init(Arguments &args)
 	cpu_cycles = 0;
 }
 
-void main_loop()
+void Emulator::run_one_frame()
 {
 	for (;;) {
-		if (!emu_cnt.emulator_running) {
-			break;
-		}
-
 		while (cpu_cycles < next_event) {
 			if (dma.dma_active) {
 				dma.step();
@@ -55,10 +60,16 @@ void main_loop()
 		apu.step();
 
 		end_event_processing();
+
+		if (ppu.vblank) {
+			ppu.vblank = false;
+			ppu.on_vblank();
+			break;
+		}
 	}
 }
 
-void emulator_close()
+void Emulator::close()
 {
 	switch (cartridge.save_type) {
 		case SAVE_SRAM:
@@ -78,7 +89,7 @@ void emulator_close()
 
 #define ZERO_ARR(a) std::memset(a, 0, sizeof(a))
 
-void emulator_reset()
+void Emulator::reset()
 {
 	apu = {};
 	RESET_ARR(fifos, 2);
@@ -106,7 +117,7 @@ void emulator_reset()
 	cpu_cycles = 0;
 	timer = {};
 
-	emulator_init(args);
+	emu.init(args);
 }
 
 void emulator_save_state(int n)

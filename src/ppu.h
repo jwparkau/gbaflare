@@ -188,6 +188,7 @@ struct PPU {
 
 	int ly{};
 	u16 dispcnt{};
+	bool vblank{};
 
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};

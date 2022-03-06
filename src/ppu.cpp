@@ -76,7 +76,7 @@ void PPU::step()
 			if (next_line) {
 				if (ly == 160) {
 					ppu_mode = PPU_IN_VBLANK_1;
-					on_vblank();
+					vblank = true;
 				} else {
 					ppu_mode = PPU_IN_DRAW;
 				}
@@ -117,8 +117,6 @@ void PPU::on_vblank()
 	copy_affine_ref();
 
 	dma.on_vblank();
-
-	platform_on_vblank();
 }
 
 void PPU::copy_affine_ref()

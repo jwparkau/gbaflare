@@ -20,10 +20,16 @@ struct Arguments {
 
 extern Arguments args;
 
-void emulator_init(Arguments &args);
 void main_loop();
-void emulator_close();
-void emulator_reset();
+
+struct Emulator {
+	void init(Arguments &args);
+	void run_one_frame();
+	void close();
+	void reset();
+};
+
+extern Emulator emu;
 
 struct SaveState {
 	FIFO fifos[2];
