@@ -35,37 +35,41 @@ add_executable(gbaflare "")
 if (SINGLE_SOURCE)
 	target_sources(gbaflare
 		PUBLIC
-		src/release.cpp
+		src/gba/src/release.cpp
 	)
 else()
 	target_sources(gbaflare
 		PUBLIC
-		src/apu.cpp
-		src/arm.cpp
-		src/channel.cpp
-		src/cpu.cpp
-		src/dma.cpp
-		src/flash.cpp
-		src/emulator.cpp
-		src/memory.cpp
-		src/ops.cpp
-		src/platform.cpp
-		src/ppu.cpp
-		src/scheduler.cpp
-		src/thumb.cpp
-		src/timer.cpp
-		src/types.cpp
+		src/common/src/types.cpp
+		src/gba/src/apu.cpp
+		src/gba/src/arm.cpp
+		src/gba/src/channel.cpp
+		src/gba/src/cpu.cpp
+		src/gba/src/dma.cpp
+		src/gba/src/flash.cpp
+		src/gba/src/emulator.cpp
+		src/gba/src/memory.cpp
+		src/gba/src/ppu.cpp
+		src/gba/src/scheduler.cpp
+		src/gba/src/thumb.cpp
+		src/gba/src/timer.cpp
+		src/platform/src/common/platform.cpp
 	)
 	if (USE_SDL2)
 		target_sources(gbaflare
 			PUBLIC
-			src/platform_sdl.cpp
+			src/platform/src/sdl2/platform_sdl.cpp
 		)
 	endif()
 endif()
 
 
-target_include_directories(gbaflare PUBLIC src)
+target_include_directories(gbaflare
+	PUBLIC
+	src/common/include
+	src/gba/include
+	src/platform/include
+)
 
 if (USE_SDL2)
 	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
