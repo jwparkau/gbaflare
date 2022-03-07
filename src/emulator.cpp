@@ -6,14 +6,6 @@
 Arguments args;
 Emulator emu;
 
-void main_loop()
-{
-	while (emu_cnt.emulator_running) {
-		emu.run_one_frame();
-		platform_on_vblank();
-	}
-}
-
 void Emulator::init(Arguments &args)
 {
 	set_initial_memory_state();
@@ -33,6 +25,8 @@ void Emulator::init(Arguments &args)
 			load_flash();
 			break;
 	}
+
+	cartridge_loaded = true;
 
 	cpu.flush_pipeline();
 	cpu.sfetch();
@@ -80,16 +74,11 @@ void Emulator::close()
 			save_flash();
 			break;
 	}
+
+	cartridge_loaded = false;
 }
 
-#define RESET_ARR(a, n)\
-	for (int i = 0; i < (n); i++) {\
-		a[i] = {};\
-	}
-
-#define ZERO_ARR(a) std::memset(a, 0, sizeof(a))
-
-void Emulator::reset()
+void Emulator::reset_memory()
 {
 	apu = {};
 	RESET_ARR(fifos, 2);
@@ -107,6 +96,8 @@ void Emulator::reset()
 	ZERO_ARR(palette_data);
 	ZERO_ARR(vram_data);
 	ZERO_ARR(oam_data);
+	ZERO_ARR(cartridge_data);
+	ZERO_ARR(sram_data);
 	ZERO_ARR(wave_ram);
 	last_bios_opcode = 0;
 	prefetch_enabled = 0;
@@ -116,8 +107,15 @@ void Emulator::reset()
 	scheduler_flag = false;
 	cpu_cycles = 0;
 	timer = {};
+}
 
-	emu.init(args);
+void Emulator::reset()
+{
+	close();
+
+	reset_memory();
+
+	init(args);
 }
 
 void emulator_save_state(int n)

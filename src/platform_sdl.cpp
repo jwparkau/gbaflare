@@ -1,7 +1,10 @@
+#include "platform_sdl.h"
 #include "platform.h"
+#include "emulator.h"
 
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 
 enum joypad_buttons {
 	BUTTON_A,
@@ -17,9 +20,88 @@ enum joypad_buttons {
 	NOT_MAPPED
 };
 
-static joypad_buttons translate_sym(SDL_Keycode sym);
-static joypad_buttons translate_button(int button);
-static void update_joypad(joypad_buttons button, bool down);
+joypad_buttons translate_sym(SDL_Keycode sym);
+joypad_buttons translate_button(int button);
+void update_joypad(joypad_buttons button, bool down);
+
+Platform platform;
+
+int main(int argc, char **argv)
+{
+	fprintf(stderr, "GBAFlare - Gameboy Advance Emulator\n");
+
+	const char **fn;
+	for (fn = bios_filenames; *fn; fn++) {
+		fprintf(stderr, "trying bios file %s\n", *fn);
+		std::ifstream f(*fn);
+		if (f.good()) {
+			break;
+		}
+	}
+	if (*fn) {
+		args.bios_filename = std::string(*fn);
+	} else {
+		int err = find_bios_file(args.bios_filename);
+		if (err) {
+			fprintf(stderr, "no bios file\n");
+			return EXIT_FAILURE;
+		}
+	}
+
+	load_bios_rom(args.bios_filename);
+
+	int err = platform.init();
+	if (err) {
+		return EXIT_FAILURE;
+	}
+	platform.render(framebuffer);
+
+	if (argc >= 2) {
+		args.cartridge_filename = std::string(argv[1]);
+		emu.init(args);
+	}
+
+	emu_cnt.emulator_running = true;
+
+	auto tick_start = std::chrono::steady_clock::now();
+	std::chrono::duration<double> frame_duration(1.0 / FPS);
+
+	while (emu_cnt.emulator_running) {
+		if (emu_cnt.emulator_paused) {
+			platform.wait_for_unpause();
+		}
+		if (emu.cartridge_loaded) {
+			emu.run_one_frame();
+			platform_on_vblank();
+			platform.handle_input();
+			platform.render(framebuffer);
+			platform.queue_audio(audiobuffer);
+		} else {
+			int file = platform.wait_for_cartridge_file(args.cartridge_filename);
+			if (file) {
+				emu.reset_memory();
+				emu.init(args);
+			}
+		}
+
+		std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
+		if (emu_cnt.print_fps) {
+			fprintf(stderr, "fps: %f\n", 1 / sec.count());
+		}
+
+		if (emu_cnt.throttle_enabled) {
+			while (std::chrono::steady_clock::now() - tick_start < frame_duration)
+				;
+		}
+		tick_start = std::chrono::steady_clock::now();
+	}
+
+	emu_cnt.emulator_paused = false;
+
+	emu.close();
+
+	return 0;
+}
 
 int Platform::init()
 {
@@ -71,9 +153,6 @@ int Platform::init()
 	fprintf(stderr, "audio: got buffer size %d\n", audio_spec_have.samples);
 
 	SDL_PauseAudioDevice(audio_device, 0);
-
-	render(real_framebuffer);
-	emu_cnt.emulator_running = true;
 	return PLATFORM_INIT_SUCCESS;
 
 init_failed:
@@ -140,24 +219,34 @@ void Platform::render(u16 *pixels)
 	SDL_RenderPresent(renderer);
 }
 
-void Platform::queue_audio()
+void Platform::render_black()
+{
+	SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
+	SDL_RenderClear(renderer);
+	SDL_RenderPresent(renderer);
+}
+
+void Platform::queue_audio(void *buffer)
 {
 	if (!audio_device) {
 		return;
 	}
 
-	SDL_QueueAudio(audio_device, real_audiobuffer, SAMPLES_PER_FRAME * sizeof(*real_audiobuffer));
+	SDL_QueueAudio(audio_device, buffer, SAMPLES_PER_FRAME * sizeof(*audiobuffer));
 	audio_buffer_index = 0;
 }
 
-void Platform::wait_for_cartridge_file(std::string &s)
+bool Platform::wait_for_cartridge_file(std::string &s)
 {
 	fprintf(stderr, "drag and drop in a .gba file\n");
-	while (s.length() == 0) {
+	for (;;) {
+		render_black();
+
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
 			if (e.type == SDL_QUIT) {
-				return;
+				emu_cnt.emulator_running = false;
+				return false;
 			}
 
 			if (e.type == SDL_DROPFILE) {
@@ -166,19 +255,27 @@ void Platform::wait_for_cartridge_file(std::string &s)
 				SDL_free(filename);
 				if (temp.ends_with(".gba")) {
 					s = temp;
-					return;
+					return true;
 				} else {
 					fprintf(stderr, "cartridge file should end with .gba\n");
 				}
 			}
 		}
-
 		SDL_Delay(16);
 	}
+}
 
-	SDL_SetRenderDrawColor(renderer, 0x0, 0x0, 0x0, 0xFF);
-	SDL_RenderClear(renderer);
-	SDL_RenderPresent(renderer);
+void Platform::wait_for_unpause()
+{
+	for (;;) {
+		render(framebuffer);
+
+		handle_input();
+		if (!emu_cnt.emulator_paused) {
+			break;
+		}
+		SDL_Delay(16);
+	}
 }
 
 
@@ -219,6 +316,9 @@ void Platform::handle_input()
 				case SDLK_F5:
 					emu_cnt.do_reset = true;
 					break;
+				case SDLK_F12:
+					emu_cnt.do_close = true;
+					break;
 			}
 		}
 
@@ -252,7 +352,7 @@ void Platform::handle_input()
 	}
 }
 
-static void update_joypad(joypad_buttons button, bool down)
+void update_joypad(joypad_buttons button, bool down)
 {
 	if (button != NOT_MAPPED) {
 		if (down) {
@@ -263,7 +363,7 @@ static void update_joypad(joypad_buttons button, bool down)
 	}
 }
 
-static joypad_buttons translate_sym(SDL_Keycode sym)
+joypad_buttons translate_sym(SDL_Keycode sym)
 {
 	switch (sym) {
 		case SDLK_RIGHT:
@@ -293,7 +393,7 @@ static joypad_buttons translate_sym(SDL_Keycode sym)
 	}
 }
 
-static joypad_buttons translate_button(int button)
+joypad_buttons translate_button(int button)
 {
 	switch (button) {
 		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:

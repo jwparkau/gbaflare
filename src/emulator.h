@@ -20,12 +20,13 @@ struct Arguments {
 
 extern Arguments args;
 
-void main_loop();
-
 struct Emulator {
+	bool cartridge_loaded{};
+
 	void init(Arguments &args);
 	void run_one_frame();
 	void close();
+	void reset_memory();
 	void reset();
 };
 

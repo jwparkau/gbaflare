@@ -35,7 +35,8 @@ add_executable(gbaflare "")
 if (SINGLE_SOURCE)
 	target_sources(gbaflare
 		PUBLIC
-		src/release.cpp)
+		src/release.cpp
+	)
 else()
 	target_sources(gbaflare
 		PUBLIC
@@ -55,7 +56,14 @@ else()
 		src/timer.cpp
 		src/types.cpp
 	)
+	if (USE_SDL2)
+		target_sources(gbaflare
+			PUBLIC
+			src/platform_sdl.cpp
+		)
+	endif()
 endif()
+
 
 target_include_directories(gbaflare PUBLIC src)
 

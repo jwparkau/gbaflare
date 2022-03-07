@@ -30,9 +30,13 @@ struct Platform {
 	int init();
 
 	void render(u16 *pixels);
+	void render_black();
 	void handle_input();
-	void queue_audio();
-	void wait_for_cartridge_file(std::string &s);
+	void queue_audio(void *buffer);
+	bool wait_for_cartridge_file(std::string &s);
+	void wait_for_unpause();
 };
+
+extern Platform platform;
 
 #endif

@@ -13,3 +13,4 @@
 #include "flash.cpp"
 #include "apu.cpp"
 #include "channel.cpp"
+#include "platform_sdl.cpp"

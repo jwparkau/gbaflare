@@ -72,6 +72,13 @@ u32 rrx(u32 x, bool &carry);
 #define GET_FLAG(x, f) ((x) >> f##_SHIFT & f##_MASK)
 #define SET_FLAG(x, f, v) ((x) = ((x) & ~(f##_MASK << f##_SHIFT)) | (v << f##_SHIFT))
 
+#define RESET_ARR(a, n)\
+	for (int i = 0; i < (n); i++) {\
+		a[i] = {};\
+	}
+
+#define ZERO_ARR(a) std::memset(a, 0, sizeof(a))
+
 #define DECLARE_READ_WRITE \
 u32 nread32(addr_t addr);\
 u16 nread16(addr_t addr);\
