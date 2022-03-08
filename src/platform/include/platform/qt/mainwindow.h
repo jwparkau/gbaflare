@@ -1,21 +1,58 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <common/types.h>
+#include <platform/common/platform.h>
 #include <QMainWindow>
+#include <QGraphicsScene>
+#include <QThread>
+#include <QBuffer>
+#include <QAudioOutput>
+#include <QString>
+#include <QMutex>
+#include <string>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+class EmulatorThread : public QThread
+{
+	Q_OBJECT
+	public:
+		void run();
+
+	signals:
+		void endOfFrame();
+};
+
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT
+	Q_OBJECT
 
-public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+	public:
+		QGraphicsScene *scene{};
+		EmulatorThread *emu_thread{};
+		QIODevice *qbuffer{};
+		QAudioOutput *audio{};
+		bool audio_paused{};
+		MainWindow(QWidget *parent = nullptr);
+		~MainWindow();
 
-private:
-    Ui::MainWindow *ui;
+		void render(u16 *pixels);
+		void keyPressEvent(QKeyEvent *event);
+		void keyReleaseEvent(QKeyEvent *event);
+		joypad_buttons translate_key(int key);
+		bool eventFilter(QObject *object, QEvent *event);
+
+	private:
+		Ui::MainWindow *ui;
+		void resizeEvent(QResizeEvent *event);
+
+		public slots:
+			void onEndOfFrame();
+		void onOpenROM();
 };
+
+
 #endif // MAINWINDOW_H

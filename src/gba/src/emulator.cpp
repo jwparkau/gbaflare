@@ -63,6 +63,9 @@ void Emulator::run_one_frame()
 		if (ppu.vblank) {
 			ppu.vblank = false;
 			ppu.on_vblank();
+			dma.on_vblank();
+			apu.audio_buffer_index = 0;
+			io_write<u16>(IO_KEYINPUT, emu_cnt.joypad_state);
 			break;
 		}
 	}
@@ -70,15 +73,19 @@ void Emulator::run_one_frame()
 
 void Emulator::close()
 {
-	switch (cartridge.save_type) {
-		case SAVE_SRAM:
-			save_sram();
-			break;
-		case SAVE_FLASH64:
-		case SAVE_FLASH128:
-			save_flash();
-			break;
+	if (cartridge_loaded) {
+		switch (cartridge.save_type) {
+			case SAVE_SRAM:
+				save_sram();
+				break;
+			case SAVE_FLASH64:
+			case SAVE_FLASH128:
+				save_flash();
+				break;
+		}
 	}
+
+	reset_memory();
 
 	cartridge_loaded = false;
 }
@@ -117,9 +124,6 @@ void Emulator::reset_memory()
 void Emulator::reset()
 {
 	close();
-
-	reset_memory();
-
 	init(args);
 }
 

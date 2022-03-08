@@ -4,7 +4,7 @@ project(
 	GBAFlare
 	VERSION 0.1
 	LANGUAGES CXX
-)
+	)
 
 if ( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
 	add_compile_options(-Wall -Wextra -Winline)
@@ -13,10 +13,10 @@ endif()
 include(CheckIPOSupported)
 check_ipo_supported(RESULT supported OUTPUT error)
 if( supported )
-    message(STATUS "IPO / LTO enabled")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+	message(STATUS "IPO / LTO enabled")
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 else()
-    message(STATUS "IPO / LTO not supported: <${error}>")
+	message(STATUS "IPO / LTO not supported: <${error}>")
 endif()
 
 if (USE_SDL2)
@@ -31,6 +31,7 @@ elseif (USE_QT5)
 	set(CMAKE_AUTOMOC ON)
 	set(CMAKE_AUTORCC ON)
 	find_package(Qt5 COMPONENTS Widgets REQUIRED)
+	find_package(Qt5 COMPONENTS Multimedia REQUIRED)
 endif()
 
 set (CMAKE_CXX_STANDARD 20)
@@ -43,7 +44,7 @@ if (SINGLE_SOURCE)
 	target_sources(gbaflare
 		PUBLIC
 		src/gba/src/release.cpp
-	)
+		)
 else()
 	target_sources(gbaflare
 		PUBLIC
@@ -61,12 +62,12 @@ else()
 		src/gba/src/thumb.cpp
 		src/gba/src/timer.cpp
 		src/platform/src/common/platform.cpp
-	)
+		)
 	if (USE_SDL2)
 		target_sources(gbaflare
 			PUBLIC
 			src/platform/src/sdl2/platform_sdl.cpp
-		)
+			)
 	elseif (USE_QT5)
 		target_sources(gbaflare
 			PUBLIC
@@ -74,7 +75,7 @@ else()
 			src/platform/src/qt/mainwindow.cpp
 			src/platform/include/platform/qt/mainwindow.h
 			src/platform/src/qt/mainwindow.ui
-		)
+			)
 	endif()
 endif()
 
@@ -84,13 +85,13 @@ target_include_directories(gbaflare
 	src/common/include
 	src/gba/include
 	src/platform/include
-)
+	)
 
 
 if (USE_SDL2)
 	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
 elseif (USE_QT5)
-	target_link_libraries(gbaflare Qt5::Widgets)
+	target_link_libraries(gbaflare Qt5::Widgets Qt5::Multimedia)
 endif()
 
 find_package(Threads REQUIRED)

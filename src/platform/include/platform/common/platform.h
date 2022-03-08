@@ -4,8 +4,8 @@
 #include <common/types.h>
 #include <semaphore>
 #include <atomic>
-#include <mutex>
 #include <string>
+#include <mutex>
 
 #define SAMPLE_RATE 65536
 #define CYCLES_PER_SAMPLE (16 * 1024 * 1024 / SAMPLE_RATE)
@@ -27,32 +27,57 @@ enum joypad_buttons {
 	NOT_MAPPED
 };
 
+enum emulator_states {
+	EMULATION_STOPPED,
+	EMULATION_PAUSED,
+	EMULATION_RUNNING
+};
+
 constexpr double FPS = 59.72750057;
 extern const char *bios_filenames[];
 extern const std::string prog_name;
 
-void platform_on_vblank();
 int find_bios_file(std::string &s);
 void update_joypad(joypad_buttons button, bool down);
 
 struct EmulatorControl {
 	std::atomic_bool emulator_running{};
-	std::atomic_bool emulator_paused{};
 	std::atomic_bool throttle_enabled = true;
 	std::atomic_bool print_fps{};
-	std::atomic_int save_state{};
-	std::atomic_int load_state{};
+
 	std::atomic_uint16_t joypad_state = 0xFFFF;
-	std::atomic_bool do_reset{};
-	std::atomic_bool do_close{};
+
+	std::atomic_bool request_pause{};
+	std::atomic_bool request_reset{};
+	std::atomic_bool request_close{};
+	std::atomic_bool request_open{};
+
+	std::atomic_int emulator_state = EMULATION_STOPPED;
+
+	void on_close();
+	void on_pause();
+	void toggle_throttle();
+	void toggle_print_fps();
+
+	void process_events();
+	void process_reset();
+	void process_close();
+	void process_load();
 };
 
 extern EmulatorControl emu_cnt;
 
+struct SharedState {
+	u16 framebuffer[FRAMEBUFFER_SIZE];
+	s16 audiobuffer[AUDIOBUFFER_SIZE];
+	std::string cartridge_filename;
+
+	std::mutex lock;
+};
+
+extern SharedState shared;
+
 extern u16 framebuffer[FRAMEBUFFER_SIZE];
 extern s16 audiobuffer[AUDIOBUFFER_SIZE];
-extern std::atomic_uint32_t audio_buffer_index;
-
-
 
 #endif

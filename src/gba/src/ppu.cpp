@@ -115,8 +115,6 @@ void PPU::on_vblank()
 {
 	SET_AND_REQ_IRQ(VBLANK);
 	copy_affine_ref();
-
-	dma.on_vblank();
 }
 
 void PPU::copy_affine_ref()

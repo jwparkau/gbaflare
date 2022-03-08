@@ -66,6 +66,7 @@ struct APU {
 	u32 frameseq_cycles{};
 	u32 frame_sequencer{};
 	s8 fifo_v[NUM_FIFOS]{};
+	u32 audio_buffer_index{};
 
 	void reset();
 	void channel_step();
