@@ -6,13 +6,15 @@
 
 Flash flash;
 
-Flash::Flash() {
+Flash::Flash()
+{
 	for (u32 i = 0; i < MAX_FLASH_SIZE; i++) {
 		flash_memory[i] = 0xFF;
 	}
 }
 
-void Flash::erase_page(int page) {
+void Flash::erase_page(int page)
+{
 	u8 *p = flash_memory;
 	if (cartridge.save_type == SAVE_FLASH128 && flash_bank) {
 		p += 64_KiB;
@@ -22,7 +24,8 @@ void Flash::erase_page(int page) {
 	}
 }
 
-void Flash::erase_all() {
+void Flash::erase_all()
+{
 	u8 *p = flash_memory;
 	if (cartridge.save_type == SAVE_FLASH128 && flash_bank) {
 		p += 64_KiB;
@@ -30,6 +33,11 @@ void Flash::erase_all() {
 	for (u32 i = 0; i < 64_KiB; i++) {
 		p[i] = 0xFF;
 	}
+}
+
+void Flash::reset()
+{
+	std::memset(this, 0, sizeof(*this));
 }
 
 void load_flash()

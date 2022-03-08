@@ -25,10 +25,7 @@ template <u32 code, u32 pclr> void thumb_pushpop(u16 op);
 template <u32 code> void thumb_multiple(u16 op);
 void thumb_swi(u16 op);
 
-//const thumb_lut_t thumb_lut = thumb_init_lut();
-const thumb_lut_t thumb_lut = {
-#include "gencpp/thumb.txt"
-};
+#include <gba/cpu/thumb_lut.cpp>
 
 void thumb_branch_cond(u16 op)
 {

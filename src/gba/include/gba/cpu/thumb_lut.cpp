@@ -1,3 +1,4 @@
+const thumb_lut_t thumb_lut = {
 thumb_shift_reg<0>,
 thumb_shift_reg<0>,
 thumb_shift_reg<0>,
@@ -1022,3 +1023,4 @@ thumb_branch<3>,
 thumb_branch<3>,
 thumb_branch<3>,
 thumb_branch<3>
+};

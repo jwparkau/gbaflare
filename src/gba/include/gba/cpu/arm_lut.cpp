@@ -1,3 +1,4 @@
+const arm_lut_t arm_lut = {
 arm_alu<0,0,0,0,0>,
 arm_alu<0,0,0,0,1>,
 arm_alu<0,0,0,1,0>,
@@ -4094,3 +4095,4 @@ arm_swi,
 arm_swi,
 arm_swi,
 arm_swi
+};

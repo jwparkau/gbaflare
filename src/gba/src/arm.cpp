@@ -20,9 +20,7 @@ template <u32 byteword> void arm_swp(u32 op);
 void arm_swi(u32 op);
 void arm_bkpt(u32 op);
 
-const arm_lut_t arm_lut =  {
-#include "gencpp/arm.txt"
-};
+#include <gba/cpu/arm_lut.cpp>
 
 template<u32 link>
 void arm_branch(u32 op)

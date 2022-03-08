@@ -25,6 +25,7 @@ struct Flash {
 	Flash();
 	void erase_page(int page);
 	void erase_all();
+	void reset();
 };
 
 void load_flash();

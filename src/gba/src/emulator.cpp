@@ -93,7 +93,7 @@ void Emulator::reset_memory()
 	wave_state = {};
 	cpu = {};
 	dma = {};
-	flash = {};
+	flash.reset();
 	prefetch = {};
 	ZERO_ARR(ewram_data);
 	ZERO_ARR(iwram_data);
@@ -106,7 +106,7 @@ void Emulator::reset_memory()
 	ZERO_ARR(wave_ram);
 	last_bios_opcode = 0;
 	prefetch_enabled = 0;
-	ppu = {};
+	ppu.reset();
 	next_event = 0;
 	elapsed = 0;
 	scheduler_flag = false;

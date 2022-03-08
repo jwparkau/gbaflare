@@ -223,6 +223,8 @@ struct PPU {
 	void copy_affine_ref();
 	void setup_windows();
 	void setup_window(int n);
+
+	void reset();
 };
 
 extern PPU ppu;

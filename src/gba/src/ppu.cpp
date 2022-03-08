@@ -825,3 +825,8 @@ template <bool is_affine> void PPU::render_sprite(int i)
 }
 template void PPU::render_sprite<true>(int i);
 template void PPU::render_sprite<false>(int i);
+
+void PPU::reset()
+{
+	std::memset(this, 0, sizeof(*this));
+}
