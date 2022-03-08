@@ -24,6 +24,13 @@ if (USE_SDL2)
 	add_compile_definitions(PLATFORM_USE_SDL2)
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
+elseif (USE_QT5)
+	message(STATUS "Using QT5")
+	add_compile_definitions(PLATFORM_USE_QT5)
+	set(CMAKE_AUTOUIC ON)
+	set(CMAKE_AUTOMOC ON)
+	set(CMAKE_AUTORCC ON)
+	find_package(Qt5 COMPONENTS Widgets REQUIRED)
 endif()
 
 set (CMAKE_CXX_STANDARD 20)
@@ -60,6 +67,14 @@ else()
 			PUBLIC
 			src/platform/src/sdl2/platform_sdl.cpp
 		)
+	elseif (USE_QT5)
+		target_sources(gbaflare
+			PUBLIC
+			src/platform/src/qt/main.cpp
+			src/platform/src/qt/mainwindow.cpp
+			src/platform/include/platform/qt/mainwindow.h
+			src/platform/src/qt/mainwindow.ui
+		)
 	endif()
 endif()
 
@@ -71,8 +86,11 @@ target_include_directories(gbaflare
 	src/platform/include
 )
 
+
 if (USE_SDL2)
 	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
+elseif (USE_QT5)
+	target_link_libraries(gbaflare Qt5::Widgets)
 endif()
 
 find_package(Threads REQUIRED)
