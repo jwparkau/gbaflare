@@ -3,15 +3,12 @@
 mkdir -p build && cd build
 
 if [ -z "$1" ]; then
-	platform="SDL2"
-elif [ "$1" = "SDL" ] || [ "$1" = "SDL2" ]; then
-	platform="SDL2"
+	platform="QT5"
 elif [ "$1" = "QT5" ]; then
 	platform="QT5"
 else
 	echo "supported platforms"
-	echo "SDL"
-	echo "SDL2"
+	echo "QT5"
 	exit 1
 fi
 

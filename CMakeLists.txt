@@ -19,12 +19,7 @@ else()
 	message(STATUS "IPO / LTO not supported: <${error}>")
 endif()
 
-if (USE_SDL2)
-	message(STATUS "Using SDL2")
-	add_compile_definitions(PLATFORM_USE_SDL2)
-	find_package(SDL2 REQUIRED)
-	include_directories(${SDL2_INCLUDE_DIRS})
-elseif (USE_QT5)
+if (USE_QT5)
 	message(STATUS "Using QT5")
 	add_compile_definitions(PLATFORM_USE_QT5)
 	set(CMAKE_AUTOUIC ON)
@@ -44,7 +39,7 @@ if (SINGLE_SOURCE)
 	target_sources(gbaflare
 		PUBLIC
 		src/gba/src/release.cpp
-		)
+	)
 else()
 	target_sources(gbaflare
 		PUBLIC
@@ -62,20 +57,15 @@ else()
 		src/gba/src/thumb.cpp
 		src/gba/src/timer.cpp
 		src/platform/src/common/platform.cpp
-		)
-	if (USE_SDL2)
-		target_sources(gbaflare
-			PUBLIC
-			src/platform/src/sdl2/platform_sdl.cpp
-			)
-	elseif (USE_QT5)
+	)
+	if (USE_QT5)
 		target_sources(gbaflare
 			PUBLIC
 			src/platform/src/qt/main.cpp
 			src/platform/src/qt/mainwindow.cpp
 			src/platform/include/platform/qt/mainwindow.h
 			src/platform/src/qt/mainwindow.ui
-			)
+		)
 	endif()
 endif()
 
@@ -85,12 +75,10 @@ target_include_directories(gbaflare
 	src/common/include
 	src/gba/include
 	src/platform/include
-	)
+)
 
 
-if (USE_SDL2)
-	target_link_libraries(gbaflare ${SDL2_LIBRARIES})
-elseif (USE_QT5)
+if (USE_QT5)
 	target_link_libraries(gbaflare Qt5::Widgets Qt5::Multimedia)
 endif()
 
