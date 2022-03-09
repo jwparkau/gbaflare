@@ -90,6 +90,11 @@ void Emulator::close()
 	cartridge_loaded = false;
 }
 
+void Emulator::quit()
+{
+	close();
+}
+
 void Emulator::reset_memory()
 {
 	apu = {};

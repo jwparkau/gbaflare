@@ -42,11 +42,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 	emu_thread = new EmulatorThread;
 	connect(emu_thread, SIGNAL(endOfFrame()), SLOT(onEndOfFrame()));
-	connect(emu_thread, &EmulatorThread::finished, emu_thread, &QObject::deleteLater);
+	connect(emu_thread, SIGNAL(signalUI(float)), SLOT(onSignalUI(float)));
 }
 
 MainWindow::~MainWindow()
 {
+	emu_cnt.emulator_running = false;
+	emu_thread->wait();
+
 	delete emu_thread;
 	delete audio;
 	delete scene;
@@ -80,7 +83,11 @@ void MainWindow::onEndOfFrame()
 		qbuffer->write((const char *)shared.audiobuffer, SAMPLES_PER_FRAME * sizeof(*shared.audiobuffer));
 	}
 	shared.lock.unlock();
+};
 
+void MainWindow::onSignalUI(float fps)
+{
+	int state = emu_cnt.emulator_state;
 	ui->actionReset->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
 
 	ui->actionPause->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
@@ -93,7 +100,12 @@ void MainWindow::onEndOfFrame()
 
 	ui->actionPrint_FPS->setEnabled(state == EMULATION_RUNNING);
 	ui->actionPrint_FPS->setChecked(emu_cnt.print_fps);
-};
+
+	if (state == EMULATION_RUNNING) {
+		QString status = QString("FPS: %1").arg(fps);
+		ui->statusbar->showMessage(status, 500);
+	}
+}
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -195,6 +207,11 @@ void MainWindow::onToolbarOpenROM()
 	}
 }
 
+void MainWindow::onToolbarQuitApplication()
+{
+	QApplication::quit();
+}
+
 void MainWindow::onToolbarPrintFPS(bool checked)
 {
 	emu_cnt.print_fps = checked;
@@ -227,11 +244,11 @@ void EmulatorThread::run()
 
 	for (;;) {
 		if (!emu_cnt.emulator_running) {
-			return;
+			break;
 		}
 
 		if (emu_cnt.emulator_state == EMULATION_PAUSED) {
-			emit endOfFrame();
+			//emit endOfFrame();
 			emu_cnt.process_events();
 		} else if (emu_cnt.emulator_state == EMULATION_RUNNING) {
 			emu.run_one_frame();
@@ -239,20 +256,21 @@ void EmulatorThread::run()
 			std::memcpy(shared.framebuffer, framebuffer, FRAMEBUFFER_SIZE * sizeof(*framebuffer));
 			std::memcpy(shared.audiobuffer, audiobuffer, AUDIOBUFFER_SIZE * sizeof(*audiobuffer));
 			shared.lock.unlock();
-			emit endOfFrame();
+			//emit endOfFrame();
 			emu_cnt.process_events();
 		} else {
 			shared.lock.lock();
 			ZERO_ARR(shared.framebuffer);
 			ZERO_ARR(shared.audiobuffer);
 			shared.lock.unlock();
-			emit endOfFrame();
+			//emit endOfFrame();
 			emu_cnt.process_events();
 		}
 
 		std::chrono::duration<double> sec = std::chrono::steady_clock::now() - tick_start;
+		double fps = 1 / sec.count();
 		if (emu_cnt.print_fps) {
-			fprintf(stderr, "fps: %f\n", 1 / sec.count());
+			fprintf(stderr, "fps: %f\n", fps);
 		}
 
 		if (emu_cnt.throttle_enabled || emu_cnt.emulator_state != EMULATION_RUNNING) {
@@ -260,5 +278,10 @@ void EmulatorThread::run()
 				;
 		}
 		tick_start = std::chrono::steady_clock::now();
+
+		emit endOfFrame();
+		emit signalUI(fps);
 	}
+
+	emu.quit();
 }

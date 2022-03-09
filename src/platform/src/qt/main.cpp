@@ -44,13 +44,5 @@ int main(int argc, char *argv[])
 	w.emu_thread->start();
 
 	int err = a.exec();
-
-	emu_cnt.emulator_running = false;
-
-	w.emu_thread->wait();
-
-	emu.close();
-	fprintf(stderr, "exiting...\n");
-
 	return err;
 }

@@ -21,6 +21,7 @@ struct Emulator {
 	void close();
 	void reset_memory();
 	void reset();
+	void quit();
 };
 
 extern Emulator emu;

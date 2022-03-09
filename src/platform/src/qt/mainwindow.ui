@@ -54,14 +54,18 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen_ROM"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit_Application"/>
    </widget>
    <widget class="QMenu" name="menuEmulation">
     <property name="title">
      <string>Emulation</string>
     </property>
     <addaction name="actionReset"/>
-    <addaction name="actionPause"/>
     <addaction name="actionStop"/>
+    <addaction name="separator"/>
+    <addaction name="actionPause"/>
+    <addaction name="separator"/>
     <addaction name="actionFast_Forward"/>
    </widget>
    <widget class="QMenu" name="menuStatus">
@@ -112,6 +116,11 @@
    </property>
    <property name="text">
     <string>Fast Forward</string>
+   </property>
+  </action>
+  <action name="actionQuit_Application">
+   <property name="text">
+    <string>Quit Application</string>
    </property>
   </action>
  </widget>
@@ -213,6 +222,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>actionQuit_Application</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarQuitApplication()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>onToolbarOpenROM()</slot>
@@ -221,5 +246,6 @@
   <slot>onToolbarPause()</slot>
   <slot>onToolbarReset()</slot>
   <slot>onToolbarFastForward(bool)</slot>
+  <slot>onToolbarQuitApplication()</slot>
  </slots>
 </ui>

@@ -24,6 +24,7 @@ class EmulatorThread : public QThread
 
 	signals:
 		void endOfFrame();
+		void signalUI(float fps);
 };
 
 class MainWindow : public QMainWindow
@@ -57,6 +58,8 @@ class MainWindow : public QMainWindow
 		void onToolbarReset();
 		void onToolbarPause();
 		void onToolbarFastForward(bool checked);
+		void onSignalUI(float fps);
+		void onToolbarQuitApplication();
 };
 
 
