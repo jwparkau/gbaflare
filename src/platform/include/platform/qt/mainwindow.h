@@ -45,6 +45,7 @@ class MainWindow : public QMainWindow
 		void keyReleaseEvent(QKeyEvent *event);
 		joypad_buttons translate_key(int key);
 		bool eventFilter(QObject *object, QEvent *event);
+		void scale_view();
 
 	private:
 		Ui::MainWindow *ui;

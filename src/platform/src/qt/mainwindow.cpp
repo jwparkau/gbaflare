@@ -19,9 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
 	scene = new QGraphicsScene(this);
 	scene->setBackgroundBrush(Qt::black);
 	ui->graphicsView->setScene(scene);
-
 	render(shared.framebuffer);
-	ui->graphicsView->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
 
 	QAudioFormat format;
 	format.setSampleRate(SAMPLE_RATE);
@@ -37,7 +35,11 @@ MainWindow::MainWindow(QWidget *parent)
 	}
 
 	audio = new QAudioOutput(format, this);
+#ifdef __unix__
 	audio->setBufferSize(SAMPLES_PER_FRAME * 2 + 200);
+#else
+	audio->setBufferSize(12000);
+#endif
 	qbuffer = audio->start();
 
 	emu_thread = new EmulatorThread;
@@ -56,6 +58,11 @@ MainWindow::~MainWindow()
 	delete ui;
 }
 
+void MainWindow::scale_view()
+{
+	ui->graphicsView->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
+}
+
 void MainWindow::render(u16 *pixels)
 {
 	ui->graphicsView->scene()->clear();
@@ -67,7 +74,7 @@ void MainWindow::render(u16 *pixels)
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
 	QMainWindow::resizeEvent(event);
-	ui->graphicsView->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
+	scale_view();
 }
 
 void MainWindow::onEndOfFrame()
@@ -198,7 +205,7 @@ joypad_buttons MainWindow::translate_key(int key)
 
 void MainWindow::onToolbarOpenROM()
 {
-	QString filename = QFileDialog::getOpenFileName(this, tr("CAPTION"), "~/", tr("ROM (*.gba)"));
+	QString filename = QFileDialog::getOpenFileName(this, tr("Choose ROM file"), QDir::homePath(), tr("ROM (*.gba)"));
 	if (!filename.isEmpty()) {
 		shared.lock.lock();
 		shared.cartridge_filename = filename.toStdString();

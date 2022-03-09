@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 	QApplication a(argc, argv);
 	MainWindow w;
 	w.show();
+	w.scale_view();
 
 	fprintf(stderr, "GBAFLare - Gameboy Advance Emulator\n");
 
