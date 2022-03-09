@@ -86,6 +86,9 @@
    </property>
   </action>
   <action name="actionPause">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Pause</string>
    </property>
@@ -96,11 +99,17 @@
    </property>
   </action>
   <action name="actionPrint_FPS">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Print FPS</string>
    </property>
   </action>
   <action name="actionFast_Forward">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Fast Forward</string>
    </property>
@@ -112,7 +121,87 @@
    <sender>actionOpen_ROM</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>onOpenROM()</slot>
+   <slot>onToolbarOpenROM()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionPrint_FPS</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarPrintFPS(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionPause</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarPause()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionStop</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarStop()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionReset</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarReset()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionFast_Forward</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarFastForward(bool)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -126,6 +215,11 @@
   </connection>
  </connections>
  <slots>
-  <slot>onOpenROM()</slot>
+  <slot>onToolbarOpenROM()</slot>
+  <slot>onToolbarPrintFPS(bool)</slot>
+  <slot>onToolbarStop()</slot>
+  <slot>onToolbarPause()</slot>
+  <slot>onToolbarReset()</slot>
+  <slot>onToolbarFastForward(bool)</slot>
  </slots>
 </ui>

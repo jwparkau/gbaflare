@@ -49,9 +49,14 @@ class MainWindow : public QMainWindow
 		Ui::MainWindow *ui;
 		void resizeEvent(QResizeEvent *event);
 
-		public slots:
-			void onEndOfFrame();
-		void onOpenROM();
+	public slots:
+		void onEndOfFrame();
+		void onToolbarOpenROM();
+		void onToolbarPrintFPS(bool checked);
+		void onToolbarStop();
+		void onToolbarReset();
+		void onToolbarPause();
+		void onToolbarFastForward(bool checked);
 };
 
 

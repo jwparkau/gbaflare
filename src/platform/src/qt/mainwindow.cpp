@@ -69,12 +69,30 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::onEndOfFrame()
 {
+	if (!emu_cnt.emulator_running) {
+		return;
+	}
+
+	int state = emu_cnt.emulator_state;
 	shared.lock.lock();
 	render(shared.framebuffer);
-	if (emu_cnt.emulator_state == EMULATION_RUNNING && emu_cnt.throttle_enabled) {
+	if (state == EMULATION_RUNNING && emu_cnt.throttle_enabled) {
 		qbuffer->write((const char *)shared.audiobuffer, SAMPLES_PER_FRAME * sizeof(*shared.audiobuffer));
 	}
 	shared.lock.unlock();
+
+	ui->actionReset->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
+
+	ui->actionPause->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
+	ui->actionPause->setChecked(state == EMULATION_PAUSED);
+
+	ui->actionStop->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
+
+	ui->actionFast_Forward->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
+	ui->actionFast_Forward->setChecked(!emu_cnt.throttle_enabled);
+
+	ui->actionPrint_FPS->setEnabled(state == EMULATION_RUNNING);
+	ui->actionPrint_FPS->setChecked(emu_cnt.print_fps);
 };
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
@@ -166,7 +184,7 @@ joypad_buttons MainWindow::translate_key(int key)
 	}
 }
 
-void MainWindow::onOpenROM()
+void MainWindow::onToolbarOpenROM()
 {
 	QString filename = QFileDialog::getOpenFileName(this, tr("CAPTION"), "~/", tr("ROM (*.gba)"));
 	if (!filename.isEmpty()) {
@@ -175,6 +193,31 @@ void MainWindow::onOpenROM()
 		shared.lock.unlock();
 		emu_cnt.request_open = true;
 	}
+}
+
+void MainWindow::onToolbarPrintFPS(bool checked)
+{
+	emu_cnt.print_fps = checked;
+}
+
+void MainWindow::onToolbarStop()
+{
+	emu_cnt.request_close = true;
+}
+
+void MainWindow::onToolbarPause()
+{
+	emu_cnt.request_pause = true;
+}
+
+void MainWindow::onToolbarReset()
+{
+	emu_cnt.request_reset = true;
+}
+
+void MainWindow::onToolbarFastForward(bool checked)
+{
+	emu_cnt.throttle_enabled = !checked;
 }
 
 void EmulatorThread::run()
