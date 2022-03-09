@@ -33,7 +33,12 @@ set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED YES)
 set (CMAKE_CXX_EXTENSIONS NO)
 
-add_executable(gbaflare "")
+if (WINDOWS)
+	set(QT_USE_MAIN true)
+	add_executable(gbaflare WIN32 "")
+else()
+	add_executable(gbaflare "")
+endif()
 
 if (SINGLE_SOURCE)
 	target_sources(gbaflare
