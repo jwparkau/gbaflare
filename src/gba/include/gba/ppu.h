@@ -175,9 +175,9 @@ struct pixel_info {
 	u16 color;
 	int priority;
 	int bg;
-	bool is_transparent;
 	int layer;
-	int enable_blending;
+	bool is_transparent;
+	bool enable_blending;
 	bool force_alpha;
 };
 
@@ -218,7 +218,7 @@ struct PPU {
 	template<bool is_affine> void render_sprite(int i);
 
 	bool bg_is_enabled(int i);
-	bool should_push_pixel(int bg, int x, int &blend);
+	bool should_push_pixel(int bg, int x, bool &blend);
 	void check_window(int n, int x);
 	void copy_affine_ref();
 	void setup_windows();

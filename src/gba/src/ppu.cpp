@@ -154,7 +154,7 @@ void PPU::draw_scanline()
 	dispcnt = io_read<u16>(IO_DISPCNT);
 
 	u16 backdrop = readarr<u16>(palette_data, 0);
-	pixel_info backdrop_info =  {backdrop, 4, 0, false, LAYER_BD, false, false};
+	pixel_info backdrop_info = {backdrop, 4, 0, LAYER_BD, false, false, false};
 	for ITERATE_SCANLINE {
 		bufferA[i] = bufferB[i] = obj_buffer[i] = backdrop_info;
 	}
@@ -197,11 +197,8 @@ void PPU::draw_scanline()
 		if (pixel.layer == LAYER_BD)
 			continue;
 
-		int blend;
-		if (!should_push_pixel(LAYER_OBJ, j, blend))
+		if (!should_push_pixel(LAYER_OBJ, j, pixel.enable_blending))
 			continue;
-
-		pixel.enable_blending = blend;
 
 		if (pixel.priority <= bufferA[i].priority) {
 			bufferB[i] = bufferA[i];
@@ -331,9 +328,9 @@ void PPU::setup_window(int n)
 #define PUSH_BG_PIXEL \
 	u16 color = readarr<u16>(palette_data, palette_offset*2);\
 	if (palette_number != 0 && tile_offset < 0x10000) {\
-		int blend;\
+		bool blend;\
 		if (should_push_pixel(bg, j, blend)) {\
-			pixel_info pixel{color, priority, bg, false, bg, blend, false};\
+			pixel_info pixel{color, priority, bg, bg, false, blend, false};\
 			pixel_info other = bufferA[i*LCD_WIDTH + j];\
 			bufferA[i*LCD_WIDTH + j] = pixel;\
 			bufferB[i*LCD_WIDTH + j] = other;\
@@ -356,7 +353,7 @@ void PPU::setup_window(int n)
 	}
 
 
-bool PPU::should_push_pixel(int bg, int x, int &blend)
+bool PPU::should_push_pixel(int bg, int x, bool &blend)
 {
 	if (!winout_enabled) {
 		blend = 1;
@@ -407,7 +404,7 @@ void PPU::render_text_bg(int bg, int priority)
 	u16 se, color;
 	int tile_number, palette_bank, ppy, pstart, pend, pdelta, px;
 	int palette_offset, palette_number = 0;
-	int blend;
+	bool blend;
 	pixel_info pixel, other;
 	u16 last_mosaic_color = 0;
 
@@ -467,7 +464,7 @@ bg_reg_sc_block_start:
 
 			if (palette_number != 0 && tile_offset < 0x10000) {
 				if (should_push_pixel(bg, j, blend)) {
-					pixel = {color, priority, bg, false, bg, blend, false};
+					pixel = {color, priority, bg, bg, false, blend, false};
 					other = bufferA[i*LCD_WIDTH + j];
 					bufferA[i*LCD_WIDTH + j] = pixel;
 					bufferB[i*LCD_WIDTH + j] = other;
@@ -618,7 +615,7 @@ void PPU::copy_framebuffer_mode3()
 
 	for ITERATE_SCANLINE {
 		u16 color = readarr<u16>(vram_data, i*2);
-		bufferA[i] = {color, priority, bg, false, LAYER_BG2, false, false};
+		bufferA[i] = {color, priority, bg, LAYER_BG2, false, false, false};
 	}
 }
 
@@ -629,7 +626,7 @@ void PPU::copy_framebuffer_mode4()
 
 	for ITERATE_SCANLINE {
 		u16 color = readarr<u16>(palette_data, p[i]*2);
-		bufferA[i] = {color, priority, bg, false, LAYER_BG2, false, false};
+		bufferA[i] = {color, priority, bg, LAYER_BG2, false, false, false};
 	}
 }
 
@@ -644,7 +641,7 @@ void PPU::copy_framebuffer_mode5()
 	if (ly < h) {
 		for (int j = 0; j < w; j++) {
 			u16 color = readarr<u16>(p, (ly*w + j) * 2);
-			bufferA[ly*LCD_WIDTH + j] = {color, priority, bg, false, LAYER_BG2, false, false};
+			bufferA[ly*LCD_WIDTH + j] = {color, priority, bg, LAYER_BG2, false, false, false};
 		}
 	}
 }
@@ -810,7 +807,7 @@ template <bool is_affine> void PPU::render_sprite(int i)
 			if (gfx_mode == 0x2) {
 				obj_window[j] = true;
 			} else {
-				pixel_info pixel{color, priority, i, false, LAYER_OBJ, 0, gfx_mode == 1};
+				pixel_info pixel{color, priority, i, LAYER_OBJ, false, false, gfx_mode == 1};
 				pixel_info other = obj_buffer[ly*LCD_WIDTH + j];
 
 				if (pixel.priority <= other.priority) {
