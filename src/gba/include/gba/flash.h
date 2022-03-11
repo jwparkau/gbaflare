@@ -19,8 +19,8 @@ enum flash_state {
 struct Flash {
 	int flash_state{};
 	bool id_mode{};
-	u8 flash_memory[MAX_FLASH_SIZE]{};
 	bool flash_bank{};
+	u8 flash_memory[MAX_FLASH_SIZE]{};
 
 	Flash();
 	void erase_page(int page);

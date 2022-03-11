@@ -8,9 +8,7 @@ Flash flash;
 
 Flash::Flash()
 {
-	for (u32 i = 0; i < MAX_FLASH_SIZE; i++) {
-		flash_memory[i] = 0xFF;
-	}
+	std::memset(flash_memory, 0xFF, MAX_FLASH_SIZE);
 }
 
 void Flash::erase_page(int page)
@@ -37,7 +35,10 @@ void Flash::erase_all()
 
 void Flash::reset()
 {
-	std::memset(this, 0, sizeof(*this));
+	flash_state = FLASH_READY;
+	id_mode = false;
+	flash_bank = false;
+	std::memset(flash_memory, 0xFF, MAX_FLASH_SIZE);
 }
 
 void load_flash()
