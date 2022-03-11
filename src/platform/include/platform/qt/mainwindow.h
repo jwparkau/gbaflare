@@ -37,6 +37,7 @@ class MainWindow : public QMainWindow
 		QIODevice *qbuffer{};
 		QAudioOutput *audio{};
 		bool audio_paused{};
+		int do_scale{};
 		MainWindow(QWidget *parent = nullptr);
 		~MainWindow();
 

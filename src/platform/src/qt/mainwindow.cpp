@@ -74,7 +74,13 @@ void MainWindow::render(u16 *pixels)
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
 	QMainWindow::resizeEvent(event);
-	scale_view();
+	if (isFullScreen()) {
+		ui->statusbar->hide();
+	} else {
+		ui->statusbar->show();
+	}
+
+	do_scale = 5;
 }
 
 void MainWindow::onEndOfFrame()
@@ -111,6 +117,11 @@ void MainWindow::onSignalUI(float fps)
 	if (state == EMULATION_RUNNING) {
 		QString status = QString("FPS: %1").arg(fps);
 		ui->statusbar->showMessage(status, 500);
+	}
+
+	if (do_scale) {
+		do_scale--;
+		scale_view();
 	}
 }
 
