@@ -76,8 +76,10 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 	QMainWindow::resizeEvent(event);
 	if (isFullScreen()) {
 		ui->statusbar->hide();
+		ui->menubar->hide();
 	} else {
 		ui->statusbar->show();
+		ui->menubar->show();
 	}
 
 	do_scale = 5;
