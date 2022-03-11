@@ -46,9 +46,9 @@ enum dma_channels {
 struct dma_transfer {
 	u32 sad;
 	u32 dad;
+	u32 count;
 	u32 cnt_l;
 	u32 cnt_h;
-	u32 count;
 
 	bool enabled()
 	{

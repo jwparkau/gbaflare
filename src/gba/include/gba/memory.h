@@ -191,11 +191,11 @@ enum SaveType {
 };
 
 struct Cartridge {
-	bool save_type_known{};
 	int save_type{};
 	std::size_t size{};
 	std::string filename;
 	std::string save_file;
+	bool save_type_known{};
 };
 
 struct Prefetch {

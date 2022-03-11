@@ -17,15 +17,15 @@ void load_eeprom();
 void save_eeprom();
 
 struct Eeprom {
+	u8 eeprom_memory[MAX_EEPROM_SIZE]{};
+	u64 bytes{};
 	u32 eeprom_mask = 0xFFFF'FFFF;
 	int eeprom_state{};
 	int address_bits_left{};
 	int data_bits_left{};
 	int read_bits_left{};
-	bool read_op{};
 	u16 address{};
-	u64 bytes{};
-	u8 eeprom_memory[MAX_EEPROM_SIZE]{};
+	bool read_op{};
 
 	Eeprom();
 	void reset();

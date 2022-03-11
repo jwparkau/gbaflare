@@ -55,26 +55,22 @@ extern const int WAVE_DUTY_TABLE[4][8];
 extern const addr_t ENVELOPE_ADDR[4];
 
 struct ChannelState {
-	bool enabled{};
-
 	s32 freq_timer{};
 	u32 wave_pos;
-
 	int current_volume{};
 	int period_timer{};
-
 	int length_timer{};
+	bool enabled{};
 };
 
 struct SweepState {
-	bool sweep_enabled{};
 	int shadow_freq{};
 	int sweep_timer{};
-
 	int calculate_freq();
+	bool sweep_enabled{};
+
 	void do_sweep_clock();
 	void on_trigger();
-
 };
 
 struct NoiseState {

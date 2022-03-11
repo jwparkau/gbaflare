@@ -183,23 +183,25 @@ struct pixel_info {
 
 struct PPU {
 	u32 cycles{};
-	ppu_modes ppu_mode = PPU_IN_DRAW;
-
-	int ly{};
-	u16 dispcnt{};
-	bool vblank{};
 
 	pixel_info bufferA[FRAMEBUFFER_SIZE]{};
 	pixel_info bufferB[FRAMEBUFFER_SIZE]{};
 	pixel_info obj_buffer[FRAMEBUFFER_SIZE]{};
-
-	window_info windows[2]{};
-	bool objwindow_enabled{};
-	bool winout_enabled{};
 	bool obj_window[LCD_WIDTH]{};
 
+	window_info windows[2]{};
+
+	ppu_modes ppu_mode = PPU_IN_DRAW;
+
+	int ly{};
 	u32 ref_x[2]{};
 	u32 ref_y[2]{};
+
+	u16 dispcnt{};
+	bool vblank{};
+
+	bool objwindow_enabled{};
+	bool winout_enabled{};
 
 	void step();
 	void on_vblank();

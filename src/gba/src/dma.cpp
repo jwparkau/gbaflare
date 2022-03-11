@@ -146,7 +146,7 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 		dad = align(dad, width);
 		sad = align(sad, width);
 
-		transfers[ch] = {sad, dad, cnt_l, cnt_h, 0};
+		transfers[ch] = {.sad=sad, .dad=dad, .count=0, .cnt_l=cnt_l, .cnt_h=cnt_h};
 
 		if (trigger == DMA_TRIGGER_NOW) {
 			dma_active |= BIT(ch);

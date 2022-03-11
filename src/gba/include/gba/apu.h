@@ -46,10 +46,10 @@ enum soundcnt_x_flags {
 };
 
 struct FIFO {
+	u8 buffer[FIFO_SIZE]{};
 	int start{};
 	int end{};
 	int size{};
-	u8 buffer[FIFO_SIZE]{};
 
 	void reset();
 	void enqueue8(u8 x);
@@ -61,11 +61,11 @@ struct FIFO {
 
 
 struct APU {
+	s8 fifo_v[NUM_FIFOS]{};
 	u32 channel_cycles{};
 	u32 sample_cycles{};
 	u32 frameseq_cycles{};
 	u32 frame_sequencer{};
-	s8 fifo_v[NUM_FIFOS]{};
 	u32 audio_buffer_index{};
 
 	void reset();
