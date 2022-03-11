@@ -146,6 +146,9 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
 		case Qt::Key_F12:
 			emu_cnt.request_close = true;
 			return;
+		case Qt::Key_F10:
+			emu_cnt.debug = !emu_cnt.debug;
+			return;
 	}
 
 	joypad_buttons button = translate_key(key);

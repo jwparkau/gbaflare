@@ -130,6 +130,11 @@ void load_cartridge_rom()
 		throw std::runtime_error("ERROR while reading cartridge file");
 	}
 	cartridge.size = bytes_read;
+	if (cartridge.size > 16_MiB) {
+		eeprom.eeprom_mask = 0x01FF'FF00;
+	} else {
+		eeprom.eeprom_mask = 0x0100'0000;
+	}
 
 	fprintf(stderr, "cartridge rom: read %ld bytes\n", bytes_read);
 }
@@ -150,7 +155,7 @@ void load_bios_rom(const std::string &filename)
 
 void determine_save_type()
 {
-	std::regex r("SRAM_V|FLASH_|FLASH512_V|FLASH1M_V");
+	std::regex r("SRAM_V\\d\\d\\d|FLASH_V\\d\\d\\d|FLASH512_V\\d\\d\\d|FLASH1M_V\\d\\d\\d|EEPROM_V\\d\\d\\d");
 	std::cmatch m;
 
 	if (std::regex_search((const char *)cartridge_data, (const char *)cartridge_data+cartridge.size, m, r)) {
@@ -159,10 +164,12 @@ void determine_save_type()
 
 		if (m[0].str().starts_with("SRAM")) {
 			cartridge.save_type = SAVE_SRAM;
-		} else if (m[0].str().starts_with("FLASH_") || m[0].str().starts_with("FLASH512_")) {
+		} else if (m[0].str().starts_with("FLASH_") || m[0].str().starts_with("FLASH5")) {
 			cartridge.save_type = SAVE_FLASH64;
-		} else if (m[0].str().starts_with("FLASH1M_")) {
+		} else if (m[0].str().starts_with("FLASH1")) {
 			cartridge.save_type = SAVE_FLASH128;
+		} else if (m[0].str().starts_with("EEPROM")) {
+			cartridge.save_type = SAVE_EEPROM_UNKNOWN;
 		}
 
 		return;
@@ -277,4 +284,9 @@ void Prefetch::init(addr_t addr)
 	current = addr;
 	cycles = cartridge_cycles[((addr >> 24) - 8) / 2 % 3][SEQ][1];
 	size = 0;
+}
+
+bool is_eeprom()
+{
+	return cartridge.save_type == SAVE_EEPROM_UNKNOWN || cartridge.save_type == SAVE_EEPROM4 || cartridge.save_type == SAVE_EEPROM64;
 }

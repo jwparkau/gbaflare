@@ -40,38 +40,32 @@ else()
 	add_executable(gbaflare "")
 endif()
 
-if (SINGLE_SOURCE)
+target_sources(gbaflare
+	PUBLIC
+	src/common/src/types.cpp
+	src/gba/src/apu.cpp
+	src/gba/src/arm.cpp
+	src/gba/src/channel.cpp
+	src/gba/src/cpu.cpp
+	src/gba/src/dma.cpp
+	src/gba/src/eeprom.cpp
+	src/gba/src/flash.cpp
+	src/gba/src/emulator.cpp
+	src/gba/src/memory.cpp
+	src/gba/src/ppu.cpp
+	src/gba/src/scheduler.cpp
+	src/gba/src/thumb.cpp
+	src/gba/src/timer.cpp
+	src/platform/src/common/platform.cpp
+)
+if (USE_QT5)
 	target_sources(gbaflare
 		PUBLIC
-		src/gba/src/release.cpp
+		src/platform/src/qt/main.cpp
+		src/platform/src/qt/mainwindow.cpp
+		src/platform/include/platform/qt/mainwindow.h
+		src/platform/src/qt/mainwindow.ui
 	)
-else()
-	target_sources(gbaflare
-		PUBLIC
-		src/common/src/types.cpp
-		src/gba/src/apu.cpp
-		src/gba/src/arm.cpp
-		src/gba/src/channel.cpp
-		src/gba/src/cpu.cpp
-		src/gba/src/dma.cpp
-		src/gba/src/flash.cpp
-		src/gba/src/emulator.cpp
-		src/gba/src/memory.cpp
-		src/gba/src/ppu.cpp
-		src/gba/src/scheduler.cpp
-		src/gba/src/thumb.cpp
-		src/gba/src/timer.cpp
-		src/platform/src/common/platform.cpp
-	)
-	if (USE_QT5)
-		target_sources(gbaflare
-			PUBLIC
-			src/platform/src/qt/main.cpp
-			src/platform/src/qt/mainwindow.cpp
-			src/platform/include/platform/qt/mainwindow.h
-			src/platform/src/qt/mainwindow.ui
-		)
-	endif()
 endif()
 
 

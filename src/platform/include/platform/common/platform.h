@@ -44,6 +44,7 @@ struct EmulatorControl {
 	std::atomic_bool emulator_running{};
 	std::atomic_bool throttle_enabled = true;
 	std::atomic_bool print_fps{};
+	std::atomic_bool debug{};
 
 	std::atomic_uint16_t joypad_state = 0xFFFF;
 

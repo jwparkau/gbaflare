@@ -29,6 +29,11 @@ void Emulator::init(Arguments &args)
 		case SAVE_FLASH128:
 			load_flash();
 			break;
+		case SAVE_EEPROM_UNKNOWN:
+		case SAVE_EEPROM4:
+		case SAVE_EEPROM64:
+			load_eeprom();
+			break;
 	}
 
 	cartridge_loaded = true;
@@ -82,6 +87,10 @@ void Emulator::close()
 			case SAVE_FLASH128:
 				save_flash();
 				break;
+			case SAVE_EEPROM4:
+			case SAVE_EEPROM64:
+				save_eeprom();
+				break;
 		}
 	}
 
@@ -106,6 +115,7 @@ void Emulator::reset_memory()
 	cpu = {};
 	dma = {};
 	flash.reset();
+	eeprom.reset();
 	prefetch = {};
 	ZERO_ARR(ewram_data);
 	ZERO_ARR(iwram_data);

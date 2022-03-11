@@ -151,6 +151,7 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 		if (trigger == DMA_TRIGGER_NOW) {
 			dma_active |= BIT(ch);
 		}
+
 	} else if (!GET_FLAG(new_value << 8, DMA_ENABLED) && GET_FLAG(old_value << 8, DMA_ENABLED)) {
 		dma_active &= ~BIT(ch);
 	}

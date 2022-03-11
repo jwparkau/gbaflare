@@ -7,6 +7,7 @@
 #include <gba/dma.h>
 #include <gba/cpu.h>
 #include <gba/flash.h>
+#include <gba/eeprom.h>
 #include <platform/common/platform.h>
 #include <gba/scheduler.h>
 #include <gba/apu.h>
@@ -183,7 +184,10 @@ enum SaveType {
 	SAVE_NONE,
 	SAVE_FLASH64,
 	SAVE_FLASH128,
-	SAVE_SRAM
+	SAVE_SRAM,
+	SAVE_EEPROM_UNKNOWN,
+	SAVE_EEPROM4,
+	SAVE_EEPROM64
 };
 
 struct Cartridge {
@@ -240,6 +244,8 @@ void set_initial_memory_state();
 bool in_vram_bg(addr_t addr);
 void on_waitcntl_write(u8 value);
 void on_waitcnth_write(u8 value);
+
+bool is_eeprom();
 
 template<typename T> T io_read(addr_t addr)
 {
@@ -474,10 +480,14 @@ template<typename T, int whence, int type> T read(addr_t addr)
 			}
 		} else if (addr < 0x0200'0000 || addr >= 0x1000'0000) {
 			u32 op = cpu.pipeline[2];
-			if constexpr (sizeof(T) == sizeof(u8)) {
-				ret = op >> (addr % 4 * 8);
+			if (cpu.in_thumb_state()) {
+				ret = (op & BITMASK(16)) * 0x10001;
 			} else {
-				ret = op;
+				if constexpr (sizeof(T) == sizeof(u8)) {
+					ret = op >> (addr % 4 * 8);
+				} else {
+					ret = op;
+				}
 			}
 			region = MemoryRegion::UNUSED;
 			goto read_end;
@@ -507,6 +517,13 @@ template<typename T, int whence, int type> T read(addr_t addr)
 			ret = mmio_read<T, whence>(addr);
 		}
 		goto read_end;
+	}
+
+	if (region == MemoryRegion::CARTRIDGE && is_eeprom()) {
+		if ((addr & eeprom.eeprom_mask) == eeprom.eeprom_mask) {
+			ret = eeprom_read();
+			goto read_end;
+		}
 	}
 
 	if (region == MemoryRegion::VRAM && offset >= 96_KiB) {
@@ -587,6 +604,13 @@ template<typename T, int whence, int type> void write(addr_t addr, T data)
 	arr = region_to_data_write[region];
 	offset = addr & region_to_offset_mask[region];
 
+	if (region == MemoryRegion::CARTRIDGE && is_eeprom()) {
+		if ((addr & eeprom.eeprom_mask) == eeprom.eeprom_mask) {
+			eeprom_write(data);
+			goto write_end;
+		}
+	}
+
 	if (!arr) {
 		goto write_end;
 	}
@@ -606,6 +630,7 @@ template<typename T, int whence, int type> void write(addr_t addr, T data)
 		sram_area_write<T, whence>(addr, data);
 		goto write_end;
 	}
+
 
 	if constexpr (sizeof(T) == sizeof(u8)) {
 		if (region == MemoryRegion::OAM) {
