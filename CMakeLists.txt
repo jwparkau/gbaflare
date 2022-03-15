@@ -4,7 +4,9 @@ project(
 	GBAFlare
 	VERSION 0.1
 	LANGUAGES CXX
-	)
+)
+
+set (USE_QT5 YES)
 
 if ( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
 	add_compile_options(-Wall -Wextra -Winline)
