@@ -47,6 +47,7 @@ class MainWindow : public QMainWindow
 		joypad_buttons translate_key(int key);
 		bool eventFilter(QObject *object, QEvent *event);
 		void scale_view();
+		void toggle_fullscreen();
 
 	private:
 		Ui::MainWindow *ui;

@@ -85,6 +85,15 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 	do_scale = 5;
 }
 
+void MainWindow::toggle_fullscreen()
+{
+	if (!isFullScreen()) {
+		showFullScreen();
+	} else {
+		showNormal();
+	}
+}
+
 void MainWindow::onEndOfFrame()
 {
 	if (!emu_cnt.emulator_running) {
@@ -131,6 +140,36 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 {
 	int key = event->key();
 
+	switch (key) {
+	case Qt::Key_0:
+		emu_cnt.toggle_throttle();
+		return;
+	case Qt::Key_P:
+		emu_cnt.toggle_print_fps();
+		return;
+	case Qt::Key_Escape:
+		emu_cnt.request_pause = true;
+		return;
+	case Qt::Key_F5:
+		emu_cnt.request_reset = true;
+		return;
+	case Qt::Key_F12:
+		emu_cnt.request_close = true;
+		return;
+	case Qt::Key_F11:
+		toggle_fullscreen();
+		return;
+	case Qt::Key_F:
+		if (event->modifiers() & Qt::ControlModifier) {
+			toggle_fullscreen();
+			return;
+		}
+		break;
+	case Qt::Key_F10:
+		emu_cnt.debug = !emu_cnt.debug;
+		return;
+	}
+
 	joypad_buttons button = translate_key(key);
 	if (button == NOT_MAPPED) {
 		QMainWindow::keyPressEvent(event);
@@ -142,27 +181,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
 	int key = event->key();
-
-	switch (key) {
-		case Qt::Key_0:
-			emu_cnt.toggle_throttle();
-			return;
-		case Qt::Key_P:
-			emu_cnt.toggle_print_fps();
-			return;
-		case Qt::Key_Escape:
-			emu_cnt.request_pause = true;
-			return;
-		case Qt::Key_F5:
-			emu_cnt.request_reset = true;
-			return;
-		case Qt::Key_F12:
-			emu_cnt.request_close = true;
-			return;
-		case Qt::Key_F10:
-			emu_cnt.debug = !emu_cnt.debug;
-			return;
-	}
 
 	joypad_buttons button = translate_key(key);
 	if (button == NOT_MAPPED) {
