@@ -30,14 +30,19 @@ enum joypad_buttons {
 enum emulator_states {
 	EMULATION_STOPPED,
 	EMULATION_PAUSED,
-	EMULATION_RUNNING
+	EMULATION_RUNNING,
+	EMULATION_NOBIOS
 };
 
 constexpr double FPS = 59.72750057;
 extern const char *bios_filenames[];
 extern const std::string prog_name;
 
+std::string get_data_dir();
+std::string get_default_bios_path();
+std::string get_default_bios_path(const std::string &s);
 int find_bios_file(std::string &s);
+void copy_bios_file(std::string &s);
 void update_joypad(joypad_buttons button, bool down);
 
 struct EmulatorControl {
@@ -52,8 +57,9 @@ struct EmulatorControl {
 	std::atomic_bool request_reset{};
 	std::atomic_bool request_close{};
 	std::atomic_bool request_open{};
+	std::atomic_bool request_load_bios{};
 
-	std::atomic_int emulator_state = EMULATION_STOPPED;
+	std::atomic_int emulator_state = EMULATION_NOBIOS;
 
 	void on_close();
 	void on_pause();
@@ -72,6 +78,7 @@ struct SharedState {
 	u16 framebuffer[FRAMEBUFFER_SIZE];
 	s16 audiobuffer[AUDIOBUFFER_SIZE];
 	std::string cartridge_filename;
+	std::string bios_filename;
 
 	std::mutex lock;
 };

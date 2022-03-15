@@ -4,6 +4,8 @@
 #include <gba/memory.h>
 
 #include <QApplication>
+#include <QString>
+#include <QFileDialog>
 #include <fstream>
 #include <iostream>
 
@@ -18,7 +20,6 @@ int main(int argc, char *argv[])
 
 	const char **fn;
 	for (fn = bios_filenames; *fn; fn++) {
-		fprintf(stderr, "trying bios file %s\n", *fn);
 		std::ifstream f(*fn);
 		if (f.good()) {
 			break;
@@ -27,14 +28,14 @@ int main(int argc, char *argv[])
 	if (*fn) {
 		args.bios_filename = std::string(*fn);
 	} else {
-		int err = find_bios_file(args.bios_filename);
-		if (err) {
-			fprintf(stderr, "no bios file\n");
-			return EXIT_FAILURE;
-		}
+		find_bios_file(args.bios_filename);
 	}
 
-	load_bios_rom(args.bios_filename);
+	shared.bios_filename = args.bios_filename;
+	if (args.bios_filename.length() > 0) {
+		load_bios_rom(args.bios_filename);
+		emu_cnt.emulator_state = EMULATION_STOPPED;
+	}
 
 	if (argc >= 2) {
 		shared.cartridge_filename = std::string(argv[1]);

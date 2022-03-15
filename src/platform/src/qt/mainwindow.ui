@@ -55,6 +55,9 @@
     </property>
     <addaction name="actionOpen_ROM"/>
     <addaction name="separator"/>
+    <addaction name="actionLoad_BIOS"/>
+    <addaction name="actionSave_BIOS"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit_Application"/>
    </widget>
    <widget class="QMenu" name="menuEmulation">
@@ -121,6 +124,16 @@
   <action name="actionQuit_Application">
    <property name="text">
     <string>Quit Application</string>
+   </property>
+  </action>
+  <action name="actionLoad_BIOS">
+   <property name="text">
+    <string>Load BIOS</string>
+   </property>
+  </action>
+  <action name="actionSave_BIOS">
+   <property name="text">
+    <string>Save BIOS</string>
    </property>
   </action>
  </widget>
@@ -238,6 +251,38 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>actionLoad_BIOS</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarLoadBIOS()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionSave_BIOS</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onToolbarSaveBIOS()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>onToolbarOpenROM()</slot>
@@ -247,5 +292,7 @@
   <slot>onToolbarReset()</slot>
   <slot>onToolbarFastForward(bool)</slot>
   <slot>onToolbarQuitApplication()</slot>
+  <slot>onToolbarLoadBIOS()</slot>
+  <slot>onToolbarSaveBIOS()</slot>
  </slots>
 </ui>

@@ -141,6 +141,7 @@ void load_cartridge_rom()
 
 void load_bios_rom(const std::string &filename)
 {
+	fprintf(stderr, "bios: trying to load file %s\n", filename.c_str());
 	std::ifstream f(filename, std::ios_base::binary);
 
 	f.read((char *)bios_data, BIOS_SIZE);
@@ -150,7 +151,7 @@ void load_bios_rom(const std::string &filename)
 		throw std::runtime_error("ERROR while reading bios file");
 	}
 
-	fprintf(stderr, "bios rom: read %ld bytes\n", bytes_read);
+	fprintf(stderr, "bios: read %ld bytes\n", bytes_read);
 }
 
 void determine_save_type()

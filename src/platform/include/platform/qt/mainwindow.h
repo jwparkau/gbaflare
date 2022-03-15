@@ -56,6 +56,8 @@ class MainWindow : public QMainWindow
 	public slots:
 		void onEndOfFrame();
 		void onToolbarOpenROM();
+		void onToolbarLoadBIOS();
+		void onToolbarSaveBIOS();
 		void onToolbarPrintFPS(bool checked);
 		void onToolbarStop();
 		void onToolbarReset();

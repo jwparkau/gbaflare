@@ -112,6 +112,12 @@ void MainWindow::onEndOfFrame()
 void MainWindow::onSignalUI(float fps)
 {
 	int state = emu_cnt.emulator_state;
+
+	ui->actionOpen_ROM->setEnabled(state != EMULATION_NOBIOS);
+
+	ui->actionLoad_BIOS->setEnabled(state == EMULATION_NOBIOS || state == EMULATION_STOPPED);
+	ui->actionSave_BIOS->setEnabled(state != EMULATION_NOBIOS);
+
 	ui->actionReset->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
 
 	ui->actionPause->setEnabled(state == EMULATION_RUNNING || state == EMULATION_PAUSED);
@@ -246,6 +252,27 @@ void MainWindow::onToolbarOpenROM()
 		shared.lock.unlock();
 		emu_cnt.request_open = true;
 	}
+}
+
+void MainWindow::onToolbarLoadBIOS()
+{
+	QString filename = QFileDialog::getOpenFileName(this, tr("Choose BIOS file"), QDir::homePath(), tr("BIOS (*.bin)"));
+	if (!filename.isEmpty()) {
+		shared.lock.lock();
+		shared.bios_filename = filename.toStdString();
+		if (emu_cnt.emulator_state == EMULATION_NOBIOS) {
+			copy_bios_file(shared.bios_filename);
+		}
+		shared.lock.unlock();
+		emu_cnt.request_load_bios = true;
+	}
+}
+
+void MainWindow::onToolbarSaveBIOS()
+{
+	shared.lock.lock();
+	copy_bios_file(shared.bios_filename);
+	shared.lock.unlock();
 }
 
 void MainWindow::onToolbarQuitApplication()
