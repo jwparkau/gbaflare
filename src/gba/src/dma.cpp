@@ -15,9 +15,7 @@ void DMA::step()
 {
 	channel = std::countr_zero(dma_active);
 
-	if (channel < NUM_DMA) {
-		step_channel(channel);
-	}
+	step_channel(channel);
 }
 
 void DMA::step_channel(int ch)
@@ -29,7 +27,7 @@ void DMA::step_channel(int ch)
 
 	bool first = t.count == 0;
 	if (first && GET_FLAG(t.cnt_h, DMA_TRIGGER) == DMA_TRIGGER_NOW) {
-		cpu_cycles += 2;
+		cpu_cycles += 1;
 	}
 
 	if (width == 4) {
@@ -70,6 +68,7 @@ void DMA::step_channel(int ch)
 	t.count++;
 
 	if (t.count >= t.cnt_l) {
+		cpu_cycles += 1;
 		t.count = 0;
 		if (GET_FLAG(t.cnt_h, DMA_SEND_IRQ)) {
 			request_interrupt(IRQ_DMA0 * BIT(ch));
@@ -149,7 +148,10 @@ void DMA::on_write(addr_t addr, u8 old_value, u8 new_value)
 		transfers[ch] = {.sad=sad, .dad=dad, .count=0, .cnt_l=cnt_l, .cnt_h=cnt_h};
 
 		if (trigger == DMA_TRIGGER_NOW) {
-			dma_active |= BIT(ch);
+			dma_request |= BIT(ch);
+			cycles = 0;
+			last_update = cpu_cycles;
+			schedule_after(3);
 		}
 
 	} else if (!GET_FLAG(new_value << 8, DMA_ENABLED) && GET_FLAG(old_value << 8, DMA_ENABLED)) {
@@ -180,6 +182,24 @@ void DMA::on_hblank()
 u16 DMA::get_cnt_h(int ch)
 {
 	return io_read<u16>(IO_DMA0CNT_H + ch*12);
+}
+
+void DMA::update()
+{
+	if (!dma_request) {
+		return;
+	}
+
+	cycles += elapsed - last_update;
+
+	if (cycles >= 3) {
+		dma_active |= dma_request;
+		dma_request = 0;
+	} else {
+		schedule_after(3 - cycles);
+	}
+
+	last_update = 0;
 }
 
 DEFINE_READ_WRITE(DMA)

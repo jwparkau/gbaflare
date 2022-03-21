@@ -58,6 +58,7 @@ void Emulator::run_one_frame()
 
 		start_event_processing();
 
+		dma.update();
 		ppu.step();
 		timer.step();
 		apu.channel_step();

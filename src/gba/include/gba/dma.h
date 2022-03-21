@@ -69,9 +69,13 @@ struct DMA {
 
 	u32 dma_enabled{};
 	u32 dma_active{};
+	u32 dma_request{};
+	u32 cycles{};
+	u32 last_update{};
 
 	void step();
 	void step_channel(int ch);
+	void update();
 
 	void on_write(addr_t addr, u8 old_value, u8 new_value);
 	void on_hblank();
