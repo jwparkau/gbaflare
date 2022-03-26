@@ -7,25 +7,6 @@
 #include <stdexcept>
 #include <iostream>
 
-static const bool cond_lut[16][16] = {
-	{0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1},
-	{1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0},
-	{0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1},
-	{1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},
-	{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-	{1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
-	{0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
-	{1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1},
-	{1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1},
-	{0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0},
-	{1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0},
-	{0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1},
-	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-};
-
 struct CPU cpu;
 
 void CPU::reset()
@@ -154,9 +135,49 @@ void CPU::thumb_execute()
 }
 
 
-bool CPU::cond_triggered(u32 cond)
+bool CPU::cond_triggered(const u32 cond)
 {
-	return cond_lut[cond][CPSR >> 28];
+	const bool N = CPSR & SIGN_FLAG;
+	const bool Z = CPSR & ZERO_FLAG;
+	const bool C = CPSR & CARRY_FLAG;
+	const bool V = CPSR & OVERFLOW_FLAG;
+
+	if (cond == 0xE) [[likely]] {
+		return true;
+	}
+
+	switch (cond) {
+		case 0:
+			return Z;
+		case 1:
+			return !Z;
+		case 2:
+			return C;
+		case 3:
+			return !C;
+		case 4:
+			return N;
+		case 5:
+			return !N;
+		case 6:
+			return V;
+		case 7:
+			return !V;
+		case 8:
+			return C && !Z;
+		case 9:
+			return !(C && !Z);
+		case 0xA:
+			return N == V;
+		case 0xB:
+			return !(N == V);
+		case 0xC:
+			return (!Z && N == V);
+		case 0xD:
+			return !(!Z && N == V);
+		default:
+			return true;
+	}
 }
 
 void CPU::arm_execute()
